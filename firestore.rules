@@ -1,0 +1,125 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidProduct(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.category is string
+        && data.purchasePrice is number && data.purchasePrice >= 0
+        && data.salePrice is number && data.salePrice >= 0
+        && data.stock is number
+        && (!('brandOrModel' in data) || (data.brandOrModel is string && data.brandOrModel.size() <= 200))
+        && (!('imeiOrSerial' in data) || (data.imeiOrSerial is string && data.imeiOrSerial.size() <= 200))
+        && (!('image' in data) || (data.image is string && data.image.size() <= 500000))
+        && data.createdAt is number;
+    }
+
+    function isValidProductSale(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.invoiceNo is string && data.invoiceNo.size() <= 100
+        && data.date is string && data.date.size() <= 20
+        && data.time is string && data.time.size() <= 20
+        && data.customerName is string && data.customerName.size() <= 200
+        && data.items is list && data.items.size() <= 100
+        && data.totalAmount is number
+        && data.discount is number
+        && data.netAmount is number
+        && data.totalPurchaseCost is number
+        && data.profit is number
+        && data.paymentMethod is string
+        && data.createdAt is number;
+    }
+
+    function isValidTransaction(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.date is string && data.date.size() <= 20
+        && data.time is string && data.time.size() <= 20
+        && data.type is string
+        && data.customerName is string && data.customerName.size() <= 200
+        && data.easyPaisaAmount is number
+        && data.cashAmount is number
+        && data.feeProfit is number
+        && data.expenseAmount is number
+        && data.paymentMethod is string
+        && data.createdAt is number;
+    }
+
+    function isValidExpense(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.date is string && data.date.size() <= 20
+        && data.category is string
+        && data.amount is number && data.amount >= 0
+        && data.description is string && data.description.size() <= 1000
+        && data.createdAt is number;
+    }
+
+    function isValidDailyBalance(data) {
+      return data.date is string && data.date.size() <= 20
+        && data.openingCash is number
+        && data.openingEasyPaisa is number;
+    }
+
+    function isValidAppSettings(data) {
+      return data.shopName is string && data.shopName.size() <= 200
+        && data.ownerName is string && data.ownerName.size() <= 200
+        && data.phone is string && data.phone.size() <= 50
+        && data.address is string && data.address.size() <= 500
+        && data.pinCode is string && data.pinCode.size() <= 10
+        && data.isLocked is bool;
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /products/{productId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(productId) && isValidProduct(incoming());
+      allow delete: if isSignedIn() && isValidId(productId);
+    }
+
+    match /productSales/{saleId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(saleId) && isValidProductSale(incoming());
+      allow delete: if isSignedIn() && isValidId(saleId);
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(transactionId) && isValidTransaction(incoming());
+      allow delete: if isSignedIn() && isValidId(transactionId);
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(expenseId) && isValidExpense(incoming());
+      allow delete: if isSignedIn() && isValidId(expenseId);
+    }
+
+    match /dailyBalances/{date} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(date) && isValidDailyBalance(incoming());
+      allow delete: if isSignedIn() && isValidId(date);
+    }
+
+    match /appSettings/{settingsId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(settingsId) && isValidAppSettings(incoming());
+      allow delete: if isSignedIn() && isValidId(settingsId);
+    }
+  }
+}

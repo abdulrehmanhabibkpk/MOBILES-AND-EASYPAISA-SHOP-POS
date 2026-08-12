@@ -1,0 +1,138 @@
+{
+  "entities": {
+    "product": {
+      "title": "Product",
+      "description": "Inventory product item in Balal Mobile Shop",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "enum": ["MOBILES", "CHARGERS", "EARPHONES", "COVERS", "PROTECTORS", "CABLES", "BATTERIES", "ACCESSORIES", "OTHER"] },
+        "purchasePrice": { "type": "number" },
+        "salePrice": { "type": "number" },
+        "stock": { "type": "number" },
+        "image": { "type": "string", "maxLength": 500000 },
+        "brandOrModel": { "type": "string", "maxLength": 200 },
+        "imeiOrSerial": { "type": "string", "maxLength": 200 },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "category", "purchasePrice", "salePrice", "stock", "createdAt"]
+    },
+    "productSale": {
+      "title": "Product Sale Invoice",
+      "description": "POS Product invoice record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "invoiceNo": { "type": "string", "maxLength": 100 },
+        "date": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 20 },
+        "customerName": { "type": "string", "maxLength": 200 },
+        "customerPhone": { "type": "string", "maxLength": 50 },
+        "items": { "type": "array" },
+        "totalAmount": { "type": "number" },
+        "discount": { "type": "number" },
+        "netAmount": { "type": "number" },
+        "totalPurchaseCost": { "type": "number" },
+        "profit": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "invoiceNo", "date", "time", "customerName", "items", "totalAmount", "discount", "netAmount", "totalPurchaseCost", "profit", "paymentMethod", "createdAt"]
+    },
+    "transaction": {
+      "title": "Financial Transaction",
+      "description": "Cash/EasyPaisa transaction ledger entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 20 },
+        "type": { "type": "string", "enum": ["BUY_CASH", "SELL_CASH", "BUY_EASYPAISA", "SELL_EASYPAISA", "EXPENSE", "DISCREPANCY_LOSS"] },
+        "customerName": { "type": "string", "maxLength": 200 },
+        "customerPhone": { "type": "string", "maxLength": 50 },
+        "trxId": { "type": "string", "maxLength": 100 },
+        "easyPaisaAmount": { "type": "number" },
+        "cashAmount": { "type": "number" },
+        "feeProfit": { "type": "number" },
+        "expenseAmount": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "date", "time", "type", "customerName", "easyPaisaAmount", "cashAmount", "feeProfit", "expenseAmount", "paymentMethod", "createdAt"]
+    },
+    "expense": {
+      "title": "Shop Expense",
+      "description": "Operating expense record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "category": { "type": "string", "enum": ["RENT", "ELECTRICITY", "TEA_FOOD", "TAX_LOAD", "SHORTAGE_LOSS", "OTHER"] },
+        "amount": { "type": "number" },
+        "description": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "date", "category", "amount", "description", "createdAt"]
+    },
+    "dailyBalance": {
+      "title": "Daily Opening Balance",
+      "description": "Opening cash and EasyPaisa balance for a day",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "maxLength": 20 },
+        "openingCash": { "type": "number" },
+        "openingEasyPaisa": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["date", "openingCash", "openingEasyPaisa"]
+    },
+    "appSettings": {
+      "title": "App Settings",
+      "description": "Global settings for Balal Mobile Shop",
+      "type": "object",
+      "properties": {
+        "shopName": { "type": "string", "maxLength": 200 },
+        "ownerName": { "type": "string", "maxLength": 200 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "address": { "type": "string", "maxLength": 500 },
+        "pinCode": { "type": "string", "maxLength": 10 },
+        "isLocked": { "type": "boolean" },
+        "theme": { "type": "string" },
+        "language": { "type": "string" },
+        "easyPaisaNumber": { "type": "string", "maxLength": 50 },
+        "jazzCashNumber": { "type": "string", "maxLength": 50 },
+        "biometricUnlockEnabled": { "type": "boolean" }
+      },
+      "required": ["shopName", "ownerName", "phone", "address", "pinCode", "isLocked"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/product" },
+      "description": "Collection of shop inventory products"
+    },
+    "/productSales/{saleId}": {
+      "schema": { "$ref": "#/entities/productSale" },
+      "description": "Collection of product sales invoices"
+    },
+    "/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/transaction" },
+      "description": "Collection of financial ledger transactions"
+    },
+    "/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/expense" },
+      "description": "Collection of shop operating expenses"
+    },
+    "/dailyBalances/{date}": {
+      "schema": { "$ref": "#/entities/dailyBalance" },
+      "description": "Collection of daily opening balances keyed by YYYY-MM-DD"
+    },
+    "/appSettings/global": {
+      "schema": { "$ref": "#/entities/appSettings" },
+      "description": "Global shop settings document"
+    }
+  }
+}

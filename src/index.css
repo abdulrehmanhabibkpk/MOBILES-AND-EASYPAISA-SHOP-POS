@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@layer utilities {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+
+/* THERMAL PRINTER (80mm / 58mm POS PAPER) OPTIMIZED MEDIA PRINT STYLES */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0mm;
+  }
+
+  html, body {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'Courier New', Courier, monospace, system-ui, -apple-system, sans-serif !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app background overlays, headers, footers, action buttons during thermal print */
+  header, footer, nav, button, .print\:hidden {
+    display: none !important;
+  }
+
+  /* Force modal containers to take full 80mm width without margin or backdrop */
+  .fixed {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .max-w-md, .max-w-xl, .max-w-2xl, .max-w-7xl {
+    max-width: 80mm !important;
+    width: 80mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Ensure text & lines print in crisp thermal black */
+  *, *:before, *:after {
+    color: #000000 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  .print\:border-black {
+    border-color: #000000 !important;
+  }
+
+  .print\:bg-black {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+  }
+
+  /* High contrast table styling for thermal receipts */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    padding: 2px 0 !important;
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Mobiles and EasyPaisa Shop POS",
+  "description": "Mobiles and EasyPaisa Shop POS - Near Sadeeq e Akbar Masjid GT Road Sarai Saleh. Contact: Umer Ali (03319348330). Shop Management, EasyPaisa & Cash Ledger.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
