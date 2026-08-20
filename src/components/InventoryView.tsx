@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { 
   Plus, Search, ShieldAlert, Edit2, Trash2, Image, 
-  Package, Sparkles, X, Check, LayoutGrid, List
+  Package, Sparkles, X, Check, LayoutGrid, List, Camera
 } from 'lucide-react';
 import { Product, ProductCategory, AppSettings } from '../types';
+import { BarcodeScannerModal } from './BarcodeScannerModal';
+import { useHardwareBarcodeScanner } from '../lib/useHardwareBarcodeScanner';
 
 interface InventoryViewProps {
   products: Product[];
@@ -47,8 +49,19 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [image, setImage] = useState<string>('');
   const [brandOrModel, setBrandOrModel] = useState('');
   const [imeiOrSerial, setImeiOrSerial] = useState('');
+  const [sku, setSku] = useState('');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const isLight = settings.theme === 'light';
+
+  // Listen for automatic scans from any attached physical keyboard-emulating USB barcode scanner
+  useHardwareBarcodeScanner((scannedCode) => {
+    if (isModalOpen) {
+      setSku(scannedCode);
+    } else {
+      setSearchTerm(scannedCode);
+    }
+  });
 
   const categories: { key: string; label: string; urdu: string }[] = [
     { key: 'ALL', label: 'All Items', urdu: 'تمام سامان' },
@@ -72,6 +85,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     setImage(PRESET_IMAGES[0].url);
     setBrandOrModel('');
     setImeiOrSerial('');
+    setSku('');
     setIsModalOpen(true);
   };
 
@@ -85,6 +99,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     setImage(p.image || PRESET_IMAGES[0].url);
     setBrandOrModel(p.brandOrModel || '');
     setImeiOrSerial(p.imeiOrSerial || '');
+    setSku(p.sku || '');
     setIsModalOpen(true);
   };
 
@@ -120,6 +135,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         image: image || PRESET_IMAGES[0].url,
         brandOrModel: brandOrModel.trim(),
         imeiOrSerial: imeiOrSerial.trim(),
+        sku: sku.trim(),
       },
       editingId || undefined
     );
@@ -132,7 +148,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     const matchesSearch =
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.brandOrModel && p.brandOrModel.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (p.imeiOrSerial && p.imeiOrSerial.toLowerCase().includes(searchTerm.toLowerCase()));
+      (p.imeiOrSerial && p.imeiOrSerial.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesCategory = selectedCategory === 'ALL' || p.category === selectedCategory;
 
@@ -634,6 +651,33 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                 </div>
               </div>
 
+              {/* SKU & Barcode Scanner Field */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  SKU / Barcode Number (Optional):
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. 880609012345"
+                    value={sku}
+                    onChange={(e) => setSku(e.target.value)}
+                    className={`flex-1 p-2.5 rounded-xl text-xs border font-mono ${
+                      isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700 text-white'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsScannerOpen(true)}
+                    className="px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-sm cursor-pointer shrink-0"
+                    title="Scan Barcode via Mobile Camera"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Scan</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Photo Selector */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -690,6 +734,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           </div>
         </div>
       )}
+
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={(code) => setSku(code)}
+      />
 
     </div>
   );

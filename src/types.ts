@@ -27,6 +27,7 @@ export interface Product {
   image?: string;        // Photo URL or Data URL
   brandOrModel?: string; // e.g. Vivo Y21, Samsung 25W
   imeiOrSerial?: string; // IMEI or Serial No
+  sku?: string;          // SKU or Barcode Number
   createdAt: number;
 }
 
@@ -162,6 +163,7 @@ export interface MobilePurchaseRecord {
   // Financial & Remarks
   purchasePrice: number;    // خرید قیمت (PKR)
   paymentMethod: 'CASH' | 'EASYPAISA' | 'JAZZCASH' | 'BANK';
+  sku?: string;             // SKU or Barcode Number
   notes?: string;
   createdAt: number;
 }

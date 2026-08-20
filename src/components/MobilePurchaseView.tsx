@@ -10,9 +10,11 @@ import {
   Eye, 
   Check, 
   X, 
-  ShieldCheck
+  ShieldCheck,
+  Camera
 } from 'lucide-react';
 import { SimplePurchaseReceiptModal } from './SimplePurchaseReceiptModal';
+import { BarcodeScannerModal } from './BarcodeScannerModal';
 
 interface MobilePurchaseViewProps {
   purchases: MobilePurchaseRecord[];
@@ -51,6 +53,8 @@ export const MobilePurchaseView: React.FC<MobilePurchaseViewProps> = ({
   const [color, setColor] = useState('');
   const [ramStorage, setRamStorage] = useState('');
   const [mobilePhoto, setMobilePhoto] = useState<string | undefined>(undefined);
+  const [sku, setSku] = useState('');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const [hasBox, setHasBox] = useState(true);
   const [hasCharger, setHasCharger] = useState(true);
@@ -95,6 +99,7 @@ export const MobilePurchaseView: React.FC<MobilePurchaseViewProps> = ({
     setColor('');
     setRamStorage('');
     setMobilePhoto(undefined);
+    setSku('');
 
     setHasBox(true);
     setHasCharger(true);
@@ -141,6 +146,7 @@ export const MobilePurchaseView: React.FC<MobilePurchaseViewProps> = ({
       color: color.trim(),
       ramStorage: ramStorage.trim(),
       mobilePhoto,
+      sku: sku.trim(),
 
       hasBox,
       hasCharger,
@@ -172,7 +178,8 @@ export const MobilePurchaseView: React.FC<MobilePurchaseViewProps> = ({
       p.imei1.toLowerCase().includes(query) ||
       (p.imei2 && p.imei2.toLowerCase().includes(query)) ||
       p.receiptNo.toLowerCase().includes(query) ||
-      (p.color && p.color.toLowerCase().includes(query));
+      (p.color && p.color.toLowerCase().includes(query)) ||
+      (p.sku && p.sku.toLowerCase().includes(query));
 
     const matchesCondition =
       filterCondition === 'ALL' || p.condition === filterCondition;
@@ -656,6 +663,30 @@ export const MobilePurchaseView: React.FC<MobilePurchaseViewProps> = ({
                       className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-medium focus:outline-none focus:border-emerald-600"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      SKU / Barcode Number
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={sku}
+                        onChange={(e) => setSku(e.target.value)}
+                        placeholder="Scan or enter barcode"
+                        className="flex-1 p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsScannerOpen(true)}
+                        className="px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-sm shrink-0"
+                        title="Scan Barcode via Camera"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>Scan</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Mobile Photo Upload */}
@@ -935,6 +966,12 @@ export const MobilePurchaseView: React.FC<MobilePurchaseViewProps> = ({
         record={selectedReceiptRecord}
         settings={settings}
         onClose={() => setSelectedReceiptRecord(null)}
+      />
+
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={(code) => setSku(code)}
       />
 
     </div>

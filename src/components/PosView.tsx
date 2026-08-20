@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { 
   ShoppingCart, Search, Plus, Minus, Trash2, User, Phone, DollarSign, 
-  Sparkles, CheckCircle2, ArrowRight, Smartphone, Receipt, ShieldCheck, List, LayoutGrid
+  Sparkles, CheckCircle2, ArrowRight, Smartphone, Receipt, ShieldCheck, List, LayoutGrid, Camera
 } from 'lucide-react';
 import { Product, ProductSale, ProductSaleItem, PaymentMethod, AppSettings } from '../types';
 import { PAYMENT_CHANNELS } from '../lib/paymentChannels';
+import { BarcodeScannerModal } from './BarcodeScannerModal';
+import { useHardwareBarcodeScanner } from '../lib/useHardwareBarcodeScanner';
 
 interface PosViewProps {
   products: Product[];
@@ -31,8 +33,14 @@ export const PosView: React.FC<PosViewProps> = ({
   const [customerPhone, setCustomerPhone] = useState('');
   const [discount, setDiscount] = useState<number | ''>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const isLight = settings.theme === 'light';
+
+  // Listen for automatic scans from any attached physical USB barcode scanner
+  useHardwareBarcodeScanner((scannedCode) => {
+    handleBarcodeScanSuccess(scannedCode);
+  });
 
   const categories = [
     { key: 'ALL', label: 'All Items' },
@@ -170,11 +178,29 @@ export const PosView: React.FC<PosViewProps> = ({
   const availableProducts = products.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.brandOrModel && p.brandOrModel.toLowerCase().includes(searchTerm.toLowerCase()));
+      (p.brandOrModel && p.brandOrModel.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (p.imeiOrSerial && p.imeiOrSerial.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === 'ALL' || p.category === selectedCategory;
 
     return matchesSearch && matchesCategory;
   });
+
+  const handleBarcodeScanSuccess = (scannedCode: string) => {
+    const code = scannedCode.trim().toLowerCase();
+    if (!code) return;
+
+    const foundProduct = products.find((p) => 
+      (p.sku && p.sku.trim().toLowerCase() === code) ||
+      (p.imeiOrSerial && p.imeiOrSerial.trim().toLowerCase() === code)
+    );
+
+    if (foundProduct) {
+      addToCart(foundProduct);
+    } else {
+      alert(`Product with Barcode / SKU "${scannedCode}" is not in stock!`);
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -185,17 +211,28 @@ export const PosView: React.FC<PosViewProps> = ({
         {/* Search & Categories Bar */}
         <div className={`p-4 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
           <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-            <div className="relative flex-1 w-full">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Product Farokht ke liye talash karein..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className={`w-full pl-9 pr-4 py-2 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-800 border-slate-700 text-slate-100'
-                }`}
-              />
+            <div className="flex gap-2 flex-1 w-full">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Product Farokht ke liye talash karein (Name or SKU)..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={`w-full pl-9 pr-4 py-2 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-800 border-slate-700 text-slate-100'
+                  }`}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsScannerOpen(true)}
+                className="px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0"
+                title="Scan Barcode / SKU via Camera"
+              >
+                <Camera className="w-4 h-4" />
+                <span className="hidden sm:inline">Scan Barcode</span>
+              </button>
             </div>
 
             {/* View Mode Switcher */}
@@ -607,6 +644,12 @@ export const PosView: React.FC<PosViewProps> = ({
 
         </div>
       </div>
+
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={handleBarcodeScanSuccess}
+      />
 
     </div>
   );

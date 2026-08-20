@@ -24,6 +24,15 @@ import {
   ShieldAlert,
   ChevronRight
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid
+} from 'recharts';
 import { Transaction, DailyBalance, AppSettings, Product, ProductSale } from '../types';
 import { calculateDayStats } from '../lib/storage';
 import { generateDailyClosingPDF } from '../lib/pdf';
@@ -94,8 +103,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const lowStockCount = products.filter((p) => p.stock <= 3).length;
 
-  // Key Modules list inspired by screenshot
   const isEn = settings.language === 'en';
+
+  // Get last 7 days sales trend data
+  const getWeeklySalesData = () => {
+    const days = [];
+    const shortDays = isEn 
+      ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+      : ['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ'];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayOfWeek = d.getDay();
+      
+      const daySales = productSales.filter((s) => s.date === dateStr);
+      const salesVolume = daySales.reduce((acc, s) => acc + s.netAmount, 0);
+      const totalProfit = daySales.reduce((acc, s) => acc + s.profit, 0);
+      const billCount = daySales.length;
+
+      days.push({
+        date: dateStr,
+        dayName: shortDays[dayOfWeek],
+        Sales: salesVolume,
+        Profit: totalProfit,
+        Bills: billCount,
+      });
+    }
+    return days;
+  };
+
+  const chartData = getWeeklySalesData();
+
+  // Key Modules list inspired by screenshot
 
   const modules = [
     {
@@ -293,6 +334,97 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
+      </div>
+
+      {/* Daily Sales Trends Visualization */}
+      <div className={`p-4 sm:p-5 rounded-2xl border shadow-md transition-colors ${
+        isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+          <div>
+            <h3 className={`text-sm sm:text-base font-black ${isLight ? 'text-slate-900' : 'text-white'} flex items-center gap-2`}>
+              <TrendingUp className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
+              <span>{isEn ? 'Daily Sales Trends (Current Week)' : 'رواں ہفتے کی روزانہ فروخت کی صورتحال'}</span>
+            </h3>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {isEn ? 'Total sale revenue and net profit trends for the last 7 days' : 'پچھلے 7 دنوں کا کل کاروباری حجم اور خالص منافع کا تقابل'}
+            </p>
+          </div>
+          <div className="flex items-center gap-4 text-xs font-semibold">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+              <span className={isLight ? 'text-slate-600' : 'text-slate-300'}>{isEn ? 'Sales Revenue' : 'کل فروخت'}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              <span className={isLight ? 'text-slate-600' : 'text-slate-300'}>{isEn ? 'Net Profit' : 'خالص منافع'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Recharts responsive container */}
+        <div className="h-64 sm:h-72 w-full mt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25}/>
+                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isLight ? '#f1f5f9' : '#1e293b'} />
+              <XAxis 
+                dataKey="dayName" 
+                tick={{ fill: isLight ? '#475569' : '#94a3b8', fontSize: 11, fontWeight: 'bold' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis 
+                tick={{ fill: isLight ? '#475569' : '#94a3b8', fontSize: 10, fontWeight: 'mono' }}
+                tickFormatter={(val) => `Rs ${val >= 1000 ? (val / 1000) + 'k' : val}`}
+                axisLine={false}
+                tickLine={false}
+                width={50}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: isLight ? '#ffffff' : '#0f172a', 
+                  border: `1px solid ${isLight ? '#e2e8f0' : '#1e293b'}`, 
+                  borderRadius: '16px',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  color: isLight ? '#0f172a' : '#ffffff'
+                }}
+                formatter={(value: any, name: any) => [
+                  `Rs. ${Number(value).toLocaleString()}`, 
+                  name === 'Sales' ? (isEn ? 'Sales Volume' : 'کل فروخت') : (isEn ? 'Net Profit' : 'خالص منافع')
+                ]}
+                labelFormatter={(label) => `${isEn ? 'Day' : 'دن'}: ${label}`}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="Sales" 
+                stroke="#2563eb" 
+                strokeWidth={3} 
+                fillOpacity={1} 
+                fill="url(#colorSales)" 
+              />
+              <Area 
+                type="monotone" 
+                dataKey="Profit" 
+                stroke="#10b981" 
+                strokeWidth={3} 
+                fillOpacity={1} 
+                fill="url(#colorProfit)" 
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* KEY MANAGEMENT MODULES GRID */}

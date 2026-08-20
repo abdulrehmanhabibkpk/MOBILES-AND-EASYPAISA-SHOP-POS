@@ -18,6 +18,7 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
   settings,
 }) => {
   const [receiptType, setReceiptType] = useState<'thermal' | 'modern'>('thermal');
+  const [thermalSize, setThermalSize] = useState<'85mm' | '83mm' | '58mm'>('85mm');
 
   if (!isOpen || !sale) return null;
 
@@ -116,7 +117,7 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
       <style>{`
         @media print {
           @page {
-            size: ${receiptType === 'thermal' ? '80mm auto' : 'A4'};
+            size: ${receiptType === 'thermal' ? `${thermalSize} auto` : 'A4'};
             margin: ${receiptType === 'thermal' ? '0mm' : '10mm'};
           }
           body {
@@ -127,14 +128,17 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
             display: none !important;
           }
           .thermal-print-area {
-            width: ${receiptType === 'thermal' ? '80mm' : '100%'} !important;
+            width: ${receiptType === 'thermal' ? thermalSize : '100%'} !important;
             margin: 0 auto !important;
-            padding: ${receiptType === 'thermal' ? '4mm' : '0mm'} !important;
+            padding: ${receiptType === 'thermal' ? (thermalSize === '58mm' ? '1mm' : '4mm') : '0mm'} !important;
           }
         }
       `}</style>
 
-      <div className={`w-full ${receiptType === 'thermal' ? 'max-w-sm' : 'max-w-2xl'} bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden text-slate-800 my-auto max-h-[95vh] flex flex-col transition-all duration-300 print:max-h-none print:shadow-none print:border-none print:m-0 print:w-full print:rounded-none thermal-print-area`}>
+      <div 
+        style={receiptType === 'thermal' ? { maxWidth: thermalSize, width: '100%' } : undefined}
+        className={`w-full ${receiptType === 'thermal' ? '' : 'max-w-2xl'} bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden text-slate-800 my-auto max-h-[95vh] flex flex-col transition-all duration-300 print:max-h-none print:shadow-none print:border-none print:m-0 print:w-full print:rounded-none thermal-print-area`}
+      >
         
         {/* Modal Top Header with Receipt Selector (Screen Only) */}
         <div className="bg-slate-900 text-white p-3 sm:p-4 shrink-0 print:hidden space-y-3">
@@ -169,7 +173,7 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
               }`}
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Thermal Receipt (80mm POS)</span>
+              <span>Thermal Receipt (POS)</span>
             </button>
 
             <button
@@ -185,32 +189,63 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
               <span>Detailed Modern Invoice</span>
             </button>
           </div>
+
+          {/* THERMAL PAPER SIZE SELECTOR */}
+          {receiptType === 'thermal' && (
+            <div className="space-y-1 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <label className="block text-[10px] font-black uppercase text-emerald-400 tracking-wider">
+                Select Thermal Paper Width:
+              </label>
+              <div className="grid grid-cols-3 gap-1.5 text-[11px] font-bold text-center">
+                {(['85mm', '83mm', '58mm'] as const).map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => setThermalSize(size)}
+                    className={`py-1.5 px-2 rounded-lg transition-all cursor-pointer ${
+                      thermalSize === size
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ========================================================= */}
         {/* OPTION 1: THERMAL POS RECEIPT FORMAT (Matching Reference Image) */}
         {/* ========================================================= */}
         {receiptType === 'thermal' && (
-          <div className="p-4 sm:p-5 space-y-3 font-mono text-slate-900 overflow-y-auto print:p-2 print:overflow-visible">
+          <div className={`font-mono text-slate-900 overflow-y-auto print:p-1 print:overflow-visible ${
+            thermalSize === '58mm' ? 'p-2.5 text-[10px] space-y-1.5' : 'p-4 sm:p-5 text-xs space-y-3'
+          }`}>
             
             {/* Shop Header */}
-            <div className="text-center space-y-0.5 border-b border-black border-dashed pb-3">
-              <h1 className="font-black text-base uppercase tracking-wider text-slate-900">
+            <div className="text-center border-b border-black border-dashed pb-2 space-y-0.5">
+              <h1 className={`font-black uppercase tracking-wider text-slate-900 ${
+                thermalSize === '58mm' ? 'text-xs' : 'text-sm sm:text-base'
+              }`}>
                 {settings.shopName || 'MOBILES & EASYPAISA SHOP POS'}
               </h1>
-              <p className="text-[11px] font-medium leading-tight">
+              <p className={thermalSize === '58mm' ? 'text-[9px] leading-tight' : 'text-[11px] font-medium leading-tight'}>
                 {settings.address || 'GT Road Sarai Saleh'}
               </p>
-              <p className="text-xs font-bold">
+              <p className={`font-bold ${thermalSize === '58mm' ? 'text-[10px]' : 'text-xs'}`}>
                 PHONE : {settings.phone || '0331-9348330'}
               </p>
-              <div className="inline-block mt-1 font-extrabold text-xs uppercase tracking-widest border-y border-black py-0.5 px-2">
+              <div className={`inline-block mt-0.5 font-extrabold uppercase tracking-widest border-y border-black py-0.5 px-2 ${
+                thermalSize === '58mm' ? 'text-[9px]' : 'text-xs'
+              }`}>
                 Retail Invoice
               </div>
             </div>
 
             {/* Receipt Info */}
-            <div className="text-xs space-y-1 py-1">
+            <div className={`space-y-0.5 py-1 ${thermalSize === '58mm' ? 'text-[9px]' : 'text-xs'}`}>
               <p><span className="font-bold">Date : </span>{sale.date}, {sale.time}</p>
               <p><span className="font-bold">Customer : </span>{sale.customerName || 'Walk-in Customer'}</p>
               <p><span className="font-bold">Bill No : </span><span className="font-extrabold">{sale.invoiceNo}</span></p>
@@ -218,8 +253,8 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
             </div>
 
             {/* Itemized Table */}
-            <div className="border-t border-b border-black border-dashed py-2">
-              <table className="w-full text-xs font-mono">
+            <div className="border-t border-b border-black border-dashed py-1.5">
+              <table className={`w-full font-mono ${thermalSize === '58mm' ? 'text-[9px]' : 'text-xs'}`}>
                 <thead>
                   <tr className="border-b border-black border-dashed">
                     <th className="text-left font-extrabold pb-1">Item</th>
@@ -240,7 +275,7 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
             </div>
 
             {/* Totals & Net Summary */}
-            <div className="space-y-1 text-xs pt-1">
+            <div className={`space-y-1 pt-1 ${thermalSize === '58mm' ? 'text-[9px]' : 'text-xs'}`}>
               <div className="flex justify-between font-semibold">
                 <span>Sub Total ({sale.items.reduce((s, i) => s + i.quantity, 0)} items)</span>
                 <span>Rs {sale.totalAmount.toLocaleString()}</span>
@@ -253,24 +288,26 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
                 </div>
               )}
 
-              <div className="flex justify-between items-center text-sm font-black border-t border-b border-black py-1.5 mt-2">
+              <div className={`flex justify-between items-center font-black border-t border-b border-black py-1.5 mt-1 ${
+                thermalSize === '58mm' ? 'text-[11px]' : 'text-sm'
+              }`}>
                 <span>TOTAL</span>
-                <span className="text-base font-extrabold">Rs {sale.netAmount.toLocaleString()}</span>
+                <span className={thermalSize === '58mm' ? 'text-xs font-extrabold' : 'text-base font-extrabold'}>Rs {sale.netAmount.toLocaleString()}</span>
               </div>
 
-              <div className="flex justify-between pt-1 font-semibold text-[11px]">
+              <div className="flex justify-between pt-0.5 font-semibold text-[10px]">
                 <span>Cash Paid :</span>
                 <span>Rs {sale.netAmount.toLocaleString()}</span>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="text-center pt-3 border-t border-black border-dashed space-y-1">
-              <p className="text-[11px] font-black tracking-widest uppercase">E & O.E</p>
-              <p className="text-[10px] font-bold text-slate-700 print:text-black">
+            <div className="text-center pt-2 border-t border-black border-dashed space-y-0.5">
+              <p className="text-[10px] font-black tracking-widest uppercase">E & O.E</p>
+              <p className={`font-bold text-slate-700 print:text-black ${thermalSize === '58mm' ? 'text-[8.5px]' : 'text-[10px]'}`}>
                 Thank you for shopping with us!
               </p>
-              <p className="text-[9px] text-slate-500 print:text-black">
+              <p className="text-[8px] text-slate-500 print:text-black">
                 Mobiles & EasyPaisa Shop POS System
               </p>
             </div>
