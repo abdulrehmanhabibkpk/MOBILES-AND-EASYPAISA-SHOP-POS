@@ -61,11 +61,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [allowedAccounts, setAllowedAccounts] = useState<AllowedAccount[]>(
     settings.allowedAccounts && settings.allowedAccounts.length > 0
       ? settings.allowedAccounts
-      : [
-          { id: 'acc-1', email: 'owner@mobile.com', password: 'mobile123', name: 'Umer Ali Owner', role: 'Owner' },
-          { id: 'acc-2', email: 'manager@mobile.com', password: '123456', name: 'Umer Ali Manager', role: 'Manager' }
-        ]
+      : []
   );
+
+  useEffect(() => {
+    if (settings.allowedAccounts) {
+      setAllowedAccounts(settings.allowedAccounts);
+    }
+  }, [settings.allowedAccounts]);
   const [newAccName, setNewAccName] = useState('');
   const [newAccEmail, setNewAccEmail] = useState('');
   const [newAccPassword, setNewAccPassword] = useState('');

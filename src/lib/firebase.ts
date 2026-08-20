@@ -9,6 +9,7 @@ import {
   sendPasswordResetEmail,
   signOut as firebaseSignOut, 
   onAuthStateChanged, 
+  signInAnonymously,
   User 
 } from 'firebase/auth';
 import { 
@@ -37,6 +38,15 @@ export async function loginWithEmailAndPassword(email: string, pass: string) {
     return await signInWithEmailAndPassword(auth, email, pass);
   } catch (error) {
     console.error('Email Sign-In Error:', error);
+    throw error;
+  }
+}
+
+export async function loginAnonymously() {
+  try {
+    return await signInAnonymously(auth);
+  } catch (error) {
+    console.error('Anonymous Sign-In Error:', error);
     throw error;
   }
 }

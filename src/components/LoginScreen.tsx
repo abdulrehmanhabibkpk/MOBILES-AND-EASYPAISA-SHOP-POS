@@ -18,6 +18,7 @@ interface LoginScreenProps {
   allowedAccounts: AllowedAccount[];
   onLoginSuccess: (userEmail: string, accountName: string) => void;
   onSwitchToPin?: () => void;
+  onLoginDemo?: () => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
@@ -25,6 +26,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   allowedAccounts = [],
   onLoginSuccess,
   onSwitchToPin,
+  onLoginDemo,
 }) => {
   // Email Form State
   const [email, setEmail] = useState('');
@@ -66,6 +68,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     setIsSubmitting(true);
 
     try {
+      if (cleanEmail === 'demo@thepakhackers.com' && onLoginDemo) {
+        setIsSubmitting(false);
+        onLoginDemo();
+        return;
+      }
+
       // 1. Check local allowed accounts list
       const matchedLocalAccount = activeAccounts.find(
         acc => acc.email.toLowerCase() === cleanEmail && acc.password === cleanPassword
@@ -219,6 +227,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 </button>
               </div>
             )}
+
+
 
           </form>
 

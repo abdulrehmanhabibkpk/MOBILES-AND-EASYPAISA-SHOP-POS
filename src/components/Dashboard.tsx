@@ -46,6 +46,8 @@ interface DashboardProps {
   products: Product[];
   productSales: ProductSale[];
   settings: AppSettings;
+  selectedDate: string;
+  setSelectedDate: (date: string) => void;
   onNavigateTab: (tab: NavTab) => void;
   onOpenNewTransaction: () => void;
   onOpenNewExpense: () => void;
@@ -60,6 +62,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   products,
   productSales,
   settings,
+  selectedDate,
+  setSelectedDate,
   onNavigateTab,
   onOpenNewTransaction,
   onOpenNewExpense,
@@ -67,7 +71,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onSelectTransaction,
   onDeleteTransaction,
 }) => {
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('ALL');
 
@@ -200,58 +203,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
       
-      {/* Top Banner & Quick Date Controller */}
-      <div className={`p-4 sm:p-5 rounded-2xl border shadow-md transition-colors ${
-        isLight ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white border-emerald-500 shadow-emerald-600/15' : 'bg-gradient-to-r from-neutral-950 via-black to-emerald-950 text-white border-emerald-900/60'
-      }`}>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          
-          {/* Shop Title & Subtitle */}
-          <div className="flex items-center gap-3.5">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black shrink-0 ${
-              isLight ? 'bg-white/20 text-white border border-white/30' : 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-            }`}>
-              <Smartphone className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-xl font-black tracking-tight text-white">
-                  {settings.shopName || 'Mobiles and EasyPaisa Shop POS'}
-                </h2>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider hidden sm:inline-flex items-center gap-1 ${
-                  isLight ? 'bg-white/20 text-white border border-white/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                }`}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                  Live System
-                </span>
-              </div>
-              <p className={`text-xs mt-0.5 ${isLight ? 'text-emerald-100' : 'text-emerald-200/80'}`}>
-                {isEn ? 'Mobile Sales, Accessories POS, EasyPaisa Cash-in/Out & Ledger' : 'موبائل سیلز، ایزی پیسہ کیش ان/آوٹ اور دکان کا مکمل کھاتہ'}
-              </p>
-            </div>
-          </div>
 
-          {/* Date Picker & Opening Capital Button */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 border border-white/15 backdrop-blur-sm">
-              <Calendar className="w-4 h-4 text-blue-300" />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent text-xs font-mono text-white font-bold outline-none cursor-pointer"
-              />
-            </div>
-            <button
-              onClick={onOpenOpeningBalance}
-              className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer shrink-0"
-            >
-              <Wallet className="w-4 h-4" />
-              <span>{isEn ? 'Set Capital' : 'افتتاحی کیش'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* 4 Primary Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -334,6 +286,67 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
+      </div>
+
+      {/* KEY MANAGEMENT MODULES GRID */}
+      <div className={`p-4 sm:p-6 rounded-2xl border shadow-sm ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800 gap-2">
+          <div>
+            <h3 className={`text-sm sm:text-base font-black ${isLight ? 'text-slate-900' : 'text-white'} flex items-center gap-2`}>
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>{isEn ? 'Key Shop Management Modules' : 'اہم انتظامی امور (Key Modules)'}</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {isEn ? 'Direct access to point of sale, stock, ledger, khata & reports' : 'دکان کے بنیادی امور، سیلز، انوینٹری اور کھاتہ نیویگیشن'}
+            </p>
+          </div>
+
+          {lowStockCount > 0 && (
+            <button
+              onClick={() => onNavigateTab('inventory')}
+              className="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-700/50 text-xs font-extrabold flex items-center gap-1.5 animate-pulse cursor-pointer shrink-0"
+            >
+              <ShieldAlert className="w-4 h-4" />
+              <span>{lowStockCount} {isEn ? 'Low Stock Warning!' : 'آئٹم اسٹاک کم ہے!'}</span>
+            </button>
+          )}
+        </div>
+
+        {/* 6 Modules Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {modules.map((mod) => {
+            const Icon = mod.icon;
+
+            return (
+              <div
+                key={mod.id}
+                onClick={() => onNavigateTab(mod.id as NavTab)}
+                className={`p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-xl hover:-translate-y-1 flex flex-col items-center text-center justify-between min-h-[135px] group ${
+                  isLight
+                    ? 'bg-slate-50/90 border-slate-200 hover:border-blue-400 hover:bg-blue-50/40'
+                    : 'bg-slate-800/80 border-slate-700 hover:border-blue-500 hover:bg-slate-800'
+                }`}
+              >
+                <div className={`w-11 h-11 rounded-xl ${mod.color} flex items-center justify-center font-bold shadow-md group-hover:scale-110 transition-transform mb-2`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+
+                <div className="space-y-0.5">
+                  <h4 className={`font-extrabold text-xs sm:text-sm leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    {mod.title}
+                  </h4>
+                  <p className="text-[10px] text-slate-500 line-clamp-1">
+                    {mod.sub}
+                  </p>
+                </div>
+
+                <span className="mt-2 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/40">
+                  {mod.badge}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Daily Sales Trends Visualization */}
@@ -424,67 +437,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
               />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* KEY MANAGEMENT MODULES GRID */}
-      <div className={`p-4 sm:p-6 rounded-2xl border shadow-sm ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800 gap-2">
-          <div>
-            <h3 className={`text-sm sm:text-base font-black ${isLight ? 'text-slate-900' : 'text-white'} flex items-center gap-2`}>
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              <span>{isEn ? 'Key Shop Management Modules' : 'اہم انتظامی امور (Key Modules)'}</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {isEn ? 'Direct access to point of sale, stock, ledger, khata & reports' : 'دکان کے بنیادی امور، سیلز، انوینٹری اور کھاتہ نیویگیشن'}
-            </p>
-          </div>
-
-          {lowStockCount > 0 && (
-            <button
-              onClick={() => onNavigateTab('inventory')}
-              className="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-700/50 text-xs font-extrabold flex items-center gap-1.5 animate-pulse cursor-pointer shrink-0"
-            >
-              <ShieldAlert className="w-4 h-4" />
-              <span>{lowStockCount} {isEn ? 'Low Stock Warning!' : 'آئٹم اسٹاک کم ہے!'}</span>
-            </button>
-          )}
-        </div>
-
-        {/* 6 Modules Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {modules.map((mod) => {
-            const Icon = mod.icon;
-
-            return (
-              <div
-                key={mod.id}
-                onClick={() => onNavigateTab(mod.id as NavTab)}
-                className={`p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-xl hover:-translate-y-1 flex flex-col items-center text-center justify-between min-h-[135px] group ${
-                  isLight
-                    ? 'bg-slate-50/90 border-slate-200 hover:border-blue-400 hover:bg-blue-50/40'
-                    : 'bg-slate-800/80 border-slate-700 hover:border-blue-500 hover:bg-slate-800'
-                }`}
-              >
-                <div className={`w-11 h-11 rounded-xl ${mod.color} flex items-center justify-center font-bold shadow-md group-hover:scale-110 transition-transform mb-2`}>
-                  <Icon className="w-5 h-5" />
-                </div>
-
-                <div className="space-y-0.5">
-                  <h4 className={`font-extrabold text-xs sm:text-sm leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    {mod.title}
-                  </h4>
-                  <p className="text-[10px] text-slate-500 line-clamp-1">
-                    {mod.sub}
-                  </p>
-                </div>
-
-                <span className="mt-2 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/40">
-                  {mod.badge}
-                </span>
-              </div>
-            );
-          })}
         </div>
       </div>
 

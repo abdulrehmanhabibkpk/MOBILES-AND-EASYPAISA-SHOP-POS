@@ -17,30 +17,42 @@ import {
   Search,
   Smartphone,
   Plus,
-  Calculator
+  Calculator,
+  LogOut,
+  QrCode,
+  Calendar,
+  Wallet
 } from 'lucide-react';
 import { AppSettings } from '../types';
 import { CashCalculatorModal } from './CashCalculatorModal';
 import { t } from '../lib/i18n';
 
-export type NavTab = 'dashboard' | 'pos' | 'inventory' | 'purchases' | 'ledger' | 'reports' | 'customers' | 'settings';
+export type NavTab = 'dashboard' | 'pos' | 'inventory' | 'purchases' | 'ledger' | 'reports' | 'customers' | 'barcodes' | 'settings';
 
 interface NavbarProps {
   activeTab: NavTab;
   setActiveTab: (tab: NavTab) => void;
   settings: AppSettings;
+  selectedDate: string;
+  setSelectedDate: (date: string) => void;
   onLock: () => void;
   onToggleTheme: () => void;
   onOpenNewTransaction: () => void;
+  onOpenOpeningBalance: () => void;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   settings,
+  selectedDate,
+  setSelectedDate,
   onLock,
   onToggleTheme,
   onOpenNewTransaction,
+  onOpenOpeningBalance,
+  onLogout,
 }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerSearch, setDrawerSearch] = useState('');
@@ -55,6 +67,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'pos', titleUrdu: 'پوائنٹ آف سیل (POS)', titleEnglish: 'Sell Products / POS', icon: ShoppingCart },
     { id: 'purchases', titleUrdu: 'موبائل خرید رجسٹر (خرید ریکارڈ)', titleEnglish: 'Mobile Buy / Purchase Register', icon: Smartphone },
     { id: 'inventory', titleUrdu: 'موبائل و ایکسیسریز اسٹاک', titleEnglish: 'Stock Inventory', icon: Package },
+    { id: 'barcodes', titleUrdu: 'برکوڈ لیبل جنریٹر اسٹوڈیو', titleEnglish: 'Barcode Studio & Printing', icon: QrCode },
     { id: 'ledger', titleUrdu: 'ایزی پیسہ کھاتہ', titleEnglish: 'EasyPaisa Ledger', icon: BookOpen },
     { id: 'customers', titleUrdu: 'گاہک کھاتہ', titleEnglish: 'Customer Khata', icon: Users },
     { id: 'reports', titleUrdu: 'رپورٹس و منافع', titleEnglish: 'Reports & Analytics', icon: FileSpreadsheet },
@@ -143,6 +156,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {/* POS Button */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-neutral-900 border border-emerald-200 dark:border-neutral-800 text-xs shadow-sm">
+            <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-transparent text-xs font-mono font-bold outline-none cursor-pointer text-emerald-900 dark:text-emerald-300 w-28 sm:w-32"
+            />
+          </div>
+
+          <button
+            onClick={onOpenOpeningBalance}
+            className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] sm:text-xs flex items-center gap-1 shadow-md shadow-emerald-600/20 transition-all cursor-pointer shrink-0"
+            title="Set Opening Capital"
+          >
+            <Wallet className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">{isEn ? 'Set Capital' : 'افتتاحی کیش'}</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('pos')}
             className={`px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl font-bold text-[11px] sm:text-xs flex items-center gap-1 shadow-md transition-all cursor-pointer shrink-0 ${
@@ -308,6 +340,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                   Lock App
                 </button>
               </div>
+
+              {onLogout && (
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    onLogout();
+                  }}
+                  className="w-full mt-2 py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow transition-all cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>{isEn ? 'Log Out Account (لاگ آؤٹ)' : 'لاگ آؤٹ (Log Out)'}</span>
+                </button>
+              )}
             </div>
 
           </div>
