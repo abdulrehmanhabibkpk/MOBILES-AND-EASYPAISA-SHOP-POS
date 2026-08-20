@@ -15,7 +15,8 @@ import {
   getStoredMobilePurchases,
   saveMobilePurchases
 } from './lib/storage';
-import { testFirestoreConnection } from './lib/firebase';
+import { testFirestoreConnection, auth } from './lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { 
   subscribeProducts, 
   subscribeProductSales, 
@@ -24,6 +25,7 @@ import {
   subscribeAppSettings,
   subscribeMobilePurchases,
   saveProductToCloud,
+  deleteProductFromCloud,
   saveProductSaleToCloud,
   saveTransactionToCloud,
   deleteTransactionFromCloud,
@@ -52,6 +54,7 @@ import { ProductInvoiceModal } from './components/ProductInvoiceModal';
 import { Footer } from './components/Footer';
 
 export default function App() {
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings>(getStoredSettings);
   const [isLocked, setIsLocked] = useState<boolean>(true); // Locked on initial startup
   const [hasLoggedInSession, setHasLoggedInSession] = useState<boolean>(false);
@@ -76,43 +79,62 @@ export default function App() {
   // Today's date string
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Test Connection and subscribe to Firestore updates
+  // Subscribe to Authentication changes
   useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setCurrentUserId(user.uid);
+        setHasLoggedInSession(true);
+        setIsLocked(false);
+      } else {
+        setCurrentUserId(null);
+        setHasLoggedInSession(false);
+        setIsLocked(true);
+      }
+    });
+    return () => unsubAuth();
+  }, []);
+
+  // Subscribe to user-specific Firestore updates
+  useEffect(() => {
+    if (!currentUserId) {
+      setProducts([]);
+      setProductSales([]);
+      setMobilePurchases([]);
+      setTransactions([]);
+      setDailyBalances({});
+      setSettings(DEFAULT_SETTINGS);
+      return;
+    }
+
     testFirestoreConnection();
 
-    const unsubProducts = subscribeProducts((remoteProducts) => {
-      if (remoteProducts && remoteProducts.length > 0) {
-        setProducts(remoteProducts);
-      }
+    const unsubProducts = subscribeProducts(currentUserId, (remoteProducts) => {
+      setProducts(remoteProducts || []);
     });
 
-    const unsubSales = subscribeProductSales((remoteSales) => {
-      if (remoteSales && remoteSales.length > 0) {
-        setProductSales(remoteSales);
-      }
+    const unsubSales = subscribeProductSales(currentUserId, (remoteSales) => {
+      setProductSales(remoteSales || []);
     });
 
-    const unsubPurchases = subscribeMobilePurchases((remotePurchases) => {
-      if (remotePurchases && remotePurchases.length > 0) {
-        setMobilePurchases(remotePurchases);
-      }
+    const unsubPurchases = subscribeMobilePurchases(currentUserId, (remotePurchases) => {
+      setMobilePurchases(remotePurchases || []);
     });
 
-    const unsubTrx = subscribeTransactions((remoteTrx) => {
-      if (remoteTrx && remoteTrx.length > 0) {
-        setTransactions(remoteTrx);
-      }
+    const unsubTrx = subscribeTransactions(currentUserId, (remoteTrx) => {
+      setTransactions(remoteTrx || []);
     });
 
-    const unsubBalances = subscribeDailyBalances((remoteBalances) => {
-      if (remoteBalances && Object.keys(remoteBalances).length > 0) {
-        setDailyBalances(remoteBalances);
-      }
+    const unsubBalances = subscribeDailyBalances(currentUserId, (remoteBalances) => {
+      setDailyBalances(remoteBalances || {});
     });
 
-    const unsubSettings = subscribeAppSettings((remoteSettings) => {
+    const unsubSettings = subscribeAppSettings(currentUserId, (remoteSettings) => {
       if (remoteSettings && remoteSettings.shopName) {
         setSettings(remoteSettings);
+      } else {
+        // Init settings document in cloud if none exists
+        saveAppSettingsToCloud(currentUserId, DEFAULT_SETTINGS);
       }
     });
 
@@ -124,7 +146,8 @@ export default function App() {
       unsubBalances();
       unsubSettings();
     };
-  }, []);
+  }, [currentUserId]);
+
 
   useEffect(() => {
     saveTransactions(transactions);
@@ -172,7 +195,9 @@ export default function App() {
     const updated = { ...settings, theme: newTheme };
     setSettings(updated);
     saveSettings(updated);
-    saveAppSettingsToCloud(updated);
+    if (currentUserId) {
+      saveAppSettingsToCloud(currentUserId, updated);
+    }
   };
 
   // Add or Edit Transaction
@@ -184,7 +209,9 @@ export default function App() {
       );
       setTransactions(updated);
       setEditingTrx(null);
-      saveTransactionToCloud(updatedTrx);
+      if (currentUserId) {
+        saveTransactionToCloud(currentUserId, updatedTrx);
+      }
     } else {
       const newTrx: Transaction = {
         ...trxData,
@@ -192,7 +219,9 @@ export default function App() {
         createdAt: Date.now(),
       };
       setTransactions([newTrx, ...transactions]);
-      saveTransactionToCloud(newTrx);
+      if (currentUserId) {
+        saveTransactionToCloud(currentUserId, newTrx);
+      }
     }
   };
 
@@ -200,12 +229,16 @@ export default function App() {
   const handleCompleteProductSale = (sale: ProductSale, updatedProducts: Product[]) => {
     setProducts(updatedProducts);
     saveProducts(updatedProducts);
-    updatedProducts.forEach((p) => saveProductToCloud(p));
+    if (currentUserId) {
+      updatedProducts.forEach((p) => saveProductToCloud(currentUserId, p));
+    }
 
     const updatedSales = [sale, ...productSales];
     setProductSales(updatedSales);
     saveProductSales(updatedSales);
-    saveProductSaleToCloud(sale);
+    if (currentUserId) {
+      saveProductSaleToCloud(currentUserId, sale);
+    }
 
     // Open Print Bill Modal automatically!
     setActiveInvoiceSale(sale);
@@ -216,7 +249,9 @@ export default function App() {
     const updatedPurchases = [record, ...mobilePurchases];
     setMobilePurchases(updatedPurchases);
     saveMobilePurchases(updatedPurchases);
-    saveMobilePurchaseToCloud(record);
+    if (currentUserId) {
+      saveMobilePurchaseToCloud(currentUserId, record);
+    }
 
     if (autoAddToStock) {
       const newProduct: Product = {
@@ -235,7 +270,9 @@ export default function App() {
       const updatedProducts = [newProduct, ...products];
       setProducts(updatedProducts);
       saveProducts(updatedProducts);
-      saveProductToCloud(newProduct);
+      if (currentUserId) {
+        saveProductToCloud(currentUserId, newProduct);
+      }
     }
   };
 
@@ -244,14 +281,59 @@ export default function App() {
     const updated = mobilePurchases.filter((p) => p.id !== id);
     setMobilePurchases(updated);
     saveMobilePurchases(updated);
-    deleteMobilePurchaseFromCloud(id);
+    if (currentUserId) {
+      deleteMobilePurchaseFromCloud(currentUserId, id);
+    }
+  };
+
+  // Add / Edit Product in Stock
+  const handleSaveProduct = (productData: Omit<Product, 'id' | 'createdAt'>, id?: string) => {
+    let updatedProducts: Product[];
+    if (id) {
+      const existing = products.find((p) => p.id === id);
+      const updatedProduct: Product = {
+        ...productData,
+        id,
+        createdAt: existing ? existing.createdAt : Date.now(),
+      };
+      updatedProducts = products.map((p) => (p.id === id ? updatedProduct : p));
+      if (currentUserId) {
+        saveProductToCloud(currentUserId, updatedProduct);
+      }
+    } else {
+      const newProduct: Product = {
+        ...productData,
+        id: `prod-${Date.now()}`,
+        createdAt: Date.now(),
+      };
+      updatedProducts = [newProduct, ...products];
+      if (currentUserId) {
+        saveProductToCloud(currentUserId, newProduct);
+      }
+    }
+    setProducts(updatedProducts);
+    saveProducts(updatedProducts);
+  };
+
+  // Delete Product from Stock
+  const handleDeleteProduct = (id: string) => {
+    if (confirm('Kya aap waqai yeh item stock se delete karna chahte hain?')) {
+      const updated = products.filter((p) => p.id !== id);
+      setProducts(updated);
+      saveProducts(updated);
+      if (currentUserId) {
+        deleteProductFromCloud(currentUserId, id);
+      }
+    }
   };
 
   // Delete Transaction
   const handleDeleteTransaction = (id: string) => {
     if (confirm('Kya aap waqai yeh entry delete karna chahte hain?')) {
       setTransactions(transactions.filter((t) => t.id !== id));
-      deleteTransactionFromCloud(id);
+      if (currentUserId) {
+        deleteTransactionFromCloud(currentUserId, id);
+      }
     }
   };
 
@@ -259,14 +341,18 @@ export default function App() {
   const handleSaveOpeningBalance = (balance: DailyBalance) => {
     saveDailyBalance(balance);
     setDailyBalances(getStoredDailyBalances());
-    saveDailyBalanceToCloud(balance);
+    if (currentUserId) {
+      saveDailyBalanceToCloud(currentUserId, balance);
+    }
   };
 
   // Save Settings
   const handleSaveSettings = (newSettings: AppSettings) => {
     setSettings(newSettings);
     saveSettings(newSettings);
-    saveAppSettingsToCloud(newSettings);
+    if (currentUserId) {
+      saveAppSettingsToCloud(currentUserId, newSettings);
+    }
   };
 
   // Restore & Reset
@@ -275,8 +361,10 @@ export default function App() {
     setSettings(newSettings);
     saveTransactions(newTrx);
     saveSettings(newSettings);
-    newTrx.forEach((t) => saveTransactionToCloud(t));
-    saveAppSettingsToCloud(newSettings);
+    if (currentUserId) {
+      newTrx.forEach((t) => saveTransactionToCloud(currentUserId, t));
+      saveAppSettingsToCloud(currentUserId, newSettings);
+    }
   };
 
   const handleResetData = () => {
@@ -382,11 +470,8 @@ export default function App() {
             {activeTab === 'inventory' && (
               <InventoryView
                 products={products}
-                onSaveProducts={(p) => {
-                  setProducts(p);
-                  saveProducts(p);
-                  p.forEach((item) => saveProductToCloud(item));
-                }}
+                onSaveProduct={handleSaveProduct}
+                onDeleteProduct={handleDeleteProduct}
                 settings={settings}
               />
             )}

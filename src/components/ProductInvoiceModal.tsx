@@ -117,20 +117,46 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
       <style>{`
         @media print {
           @page {
-            size: ${receiptType === 'thermal' ? `${thermalSize} auto` : 'A4'};
-            margin: ${receiptType === 'thermal' ? '0mm' : '10mm'};
+            size: ${receiptType === 'thermal' ? `${thermalSize} auto` : 'A4 portrait'};
+            margin: 0mm !important;
           }
           body {
             background: white !important;
             color: black !important;
           }
-          .no-print {
-            display: none !important;
+          /* Hide all page content by default */
+          body * {
+            visibility: hidden !important;
           }
+          /* Ensure ONLY the thermal print area and its children are visible */
+          .thermal-print-area, .thermal-print-area * {
+            visibility: visible !important;
+          }
+          /* Ensure screen-only elements are completely hidden when printing */
+          .print-hidden, .print\:hidden, .no-print {
+            display: none !important;
+            visibility: hidden !important;
+          }
+          /* Position and size the print area cleanly on the printable sheet */
           .thermal-print-area {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
             width: ${receiptType === 'thermal' ? thermalSize : '100%'} !important;
-            margin: 0 auto !important;
-            padding: ${receiptType === 'thermal' ? (thermalSize === '58mm' ? '1mm' : '4mm') : '0mm'} !important;
+            max-width: ${receiptType === 'thermal' ? thermalSize : '100%'} !important;
+            margin: 0 !important;
+            padding: ${receiptType === 'thermal' ? (thermalSize === '58mm' ? '2mm' : '4mm') : '0mm'} !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: white !important;
+            color: black !important;
+            font-size: ${receiptType === 'thermal' ? (thermalSize === '58mm' ? '10px' : '12px') : '14px'} !important;
+          }
+          /* Prevent extra blank pages from margins/paddings on parents */
+          .fixed.inset-0, #root {
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
           }
         }
       `}</style>

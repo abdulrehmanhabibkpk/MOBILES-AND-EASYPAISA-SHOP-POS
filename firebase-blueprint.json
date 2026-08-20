@@ -107,32 +107,57 @@
         "biometricUnlockEnabled": { "type": "boolean" }
       },
       "required": ["shopName", "ownerName", "phone", "address", "pinCode", "isLocked"]
+    },
+    "mobilePurchase": {
+      "title": "Mobile Purchase",
+      "description": "Mobile buy or purchase register entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "receiptNo": { "type": "string", "maxLength": 100 },
+        "date": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 20 },
+        "sellerName": { "type": "string", "maxLength": 200 },
+        "sellerCnic": { "type": "string", "maxLength": 50 },
+        "sellerPhone": { "type": "string", "maxLength": 50 },
+        "mobileBrandModel": { "type": "string", "maxLength": 200 },
+        "condition": { "type": "string", "enum": ["NEW", "USED"] },
+        "imei1": { "type": "string", "maxLength": 100 },
+        "imei2": { "type": "string", "maxLength": 100 },
+        "purchasePrice": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "receiptNo", "date", "time", "sellerName", "sellerCnic", "sellerPhone", "mobileBrandModel", "condition", "imei1", "purchasePrice", "createdAt"]
     }
   },
   "firestore": {
-    "/products/{productId}": {
+    "/users/{userId}/products/{productId}": {
       "schema": { "$ref": "#/entities/product" },
-      "description": "Collection of shop inventory products"
+      "description": "User-specific collection of shop inventory products"
     },
-    "/productSales/{saleId}": {
+    "/users/{userId}/productSales/{saleId}": {
       "schema": { "$ref": "#/entities/productSale" },
-      "description": "Collection of product sales invoices"
+      "description": "User-specific collection of product sales invoices"
     },
-    "/transactions/{transactionId}": {
+    "/users/{userId}/transactions/{transactionId}": {
       "schema": { "$ref": "#/entities/transaction" },
-      "description": "Collection of financial ledger transactions"
+      "description": "User-specific collection of financial ledger transactions"
     },
-    "/expenses/{expenseId}": {
+    "/users/{userId}/expenses/{expenseId}": {
       "schema": { "$ref": "#/entities/expense" },
-      "description": "Collection of shop operating expenses"
+      "description": "User-specific collection of shop operating expenses"
     },
-    "/dailyBalances/{date}": {
+    "/users/{userId}/dailyBalances/{date}": {
       "schema": { "$ref": "#/entities/dailyBalance" },
-      "description": "Collection of daily opening balances keyed by YYYY-MM-DD"
+      "description": "User-specific collection of daily opening balances keyed by YYYY-MM-DD"
     },
-    "/appSettings/global": {
+    "/users/{userId}/appSettings/{settingsId}": {
       "schema": { "$ref": "#/entities/appSettings" },
-      "description": "Global shop settings document"
+      "description": "User-specific global settings document"
+    },
+    "/users/{userId}/mobilePurchases/{purchaseId}": {
+      "schema": { "$ref": "#/entities/mobilePurchase" },
+      "description": "User-specific collection of mobile buy/purchase entries"
     }
   }
 }
