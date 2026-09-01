@@ -22,7 +22,8 @@ import {
   FileSpreadsheet,
   Settings,
   ShieldAlert,
-  ChevronRight
+  ChevronRight,
+  Edit2
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -53,6 +54,7 @@ interface DashboardProps {
   onOpenNewExpense: () => void;
   onOpenOpeningBalance: () => void;
   onSelectTransaction: (trx: Transaction) => void;
+  onEditTransaction: (trx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
 }
 
@@ -69,6 +71,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenNewExpense,
   onOpenOpeningBalance,
   onSelectTransaction,
+  onEditTransaction,
   onDeleteTransaction,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -606,6 +609,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             title="View Voucher Receipt"
                           >
                             <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => onEditTransaction(t)}
+                            className={`p-1.5 rounded-lg ${isLight ? 'bg-blue-50 hover:bg-blue-100 text-blue-700' : 'bg-slate-800 hover:bg-slate-700 text-blue-400'} transition-colors cursor-pointer`}
+                            title="Edit Entry"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => onDeleteTransaction(t.id)}

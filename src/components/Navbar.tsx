@@ -62,22 +62,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const isEn = settings.language === 'en';
 
-  const menuItems: { id: NavTab; titleUrdu: string; titleEnglish: string; icon: any }[] = [
-    { id: 'dashboard', titleUrdu: 'ڈیش بورڈ', titleEnglish: 'Dashboard', icon: LayoutDashboard },
-    { id: 'pos', titleUrdu: 'پوائنٹ آف سیل (POS)', titleEnglish: 'Sell Products / POS', icon: ShoppingCart },
-    { id: 'purchases', titleUrdu: 'موبائل خرید رجسٹر (خرید ریکارڈ)', titleEnglish: 'Mobile Buy / Purchase Register', icon: Smartphone },
-    { id: 'inventory', titleUrdu: 'موبائل و ایکسیسریز اسٹاک', titleEnglish: 'Stock Inventory', icon: Package },
-    { id: 'barcodes', titleUrdu: 'برکوڈ لیبل جنریٹر اسٹوڈیو', titleEnglish: 'Barcode Studio & Printing', icon: QrCode },
-    { id: 'ledger', titleUrdu: 'ایزی پیسہ کھاتہ', titleEnglish: 'EasyPaisa Ledger', icon: BookOpen },
-    { id: 'customers', titleUrdu: 'گاہک کھاتہ', titleEnglish: 'Customer Khata', icon: Users },
-    { id: 'reports', titleUrdu: 'رپورٹس و منافع', titleEnglish: 'Reports & Analytics', icon: FileSpreadsheet },
-    { id: 'settings', titleUrdu: 'ترتیبات', titleEnglish: 'Settings & Security', icon: Settings },
+  const menuItems: { id: NavTab; title: string; icon: any }[] = [
+    { id: 'dashboard', title: 'Dashboard', icon: LayoutDashboard },
+    { id: 'pos', title: 'Sell Products / POS', icon: ShoppingCart },
+    { id: 'purchases', title: 'Mobile Buy / Purchase Register', icon: Smartphone },
+    { id: 'inventory', title: 'Stock Inventory', icon: Package },
+    { id: 'barcodes', title: 'Barcode Studio & Printing', icon: QrCode },
+    { id: 'ledger', title: 'EasyPaisa Ledger', icon: BookOpen },
+    { id: 'customers', title: 'Customer Khata', icon: Users },
+    { id: 'reports', title: 'Reports & Analytics', icon: FileSpreadsheet },
+    { id: 'settings', title: 'Settings & Security', icon: Settings },
   ];
 
   const filteredMenuItems = menuItems.filter(
     (item) =>
-      item.titleUrdu.includes(drawerSearch) ||
-      item.titleEnglish.toLowerCase().includes(drawerSearch.toLowerCase())
+      item.title.toLowerCase().includes(drawerSearch.toLowerCase())
   );
 
   return (
@@ -104,7 +103,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               {settings.shopName || 'Mobiles and EasyPaisa Shop POS'}
             </h1>
             <p className="text-[9px] sm:text-xs text-emerald-600 font-semibold truncate hidden sm:block">
-              {isEn ? 'MOBILES AND EASYPAISA SHOP POS' : 'موبائلز اینڈ ایزی پیسہ شاپ POS'}
+              MOBILES AND EASYPAISA SHOP POS
             </p>
           </div>
         </div>
@@ -248,7 +247,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Search className="w-4 h-4 absolute left-3 top-2.5 text-emerald-600" />
                 <input
                   type="text"
-                  placeholder={isEn ? "Search menu..." : "سرچ کریں (Search menu)..."}
+                  placeholder="Search menu..."
                   value={drawerSearch}
                   onChange={(e) => setDrawerSearch(e.target.value)}
                   className={`w-full pl-9 pr-3 py-1.5 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-emerald-600 ${
@@ -284,16 +283,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className="flex items-center gap-3">
                       <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-emerald-600'}`} />
                       <div className="text-left">
-                        {isEn ? (
-                          <p className="text-xs font-bold leading-tight">{item.titleEnglish}</p>
-                        ) : (
-                          <>
-                            <p className="text-xs font-bold leading-tight">{item.titleUrdu}</p>
-                            <p className={`text-[10px] ${isActive ? 'text-emerald-100' : isLight ? 'text-slate-400' : 'text-neutral-400'}`}>
-                              {item.titleEnglish}
-                            </p>
-                          </>
-                        )}
+                        <p className="text-xs font-bold leading-tight">{item.title}</p>
                       </div>
                     </div>
                   </button>

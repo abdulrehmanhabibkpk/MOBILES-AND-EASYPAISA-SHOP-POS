@@ -11,7 +11,8 @@ import {
   Check, 
   X, 
   ShieldCheck,
-  Camera
+  Camera,
+  Edit2
 } from 'lucide-react';
 import { SimplePurchaseReceiptModal } from './SimplePurchaseReceiptModal';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
@@ -34,6 +35,7 @@ export const MobilePurchaseView: React.FC<MobilePurchaseViewProps> = ({
   
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
   const [selectedReceiptRecord, setSelectedReceiptRecord] = useState<MobilePurchaseRecord | null>(null);
   const [selectedDetailRecord, setSelectedDetailRecord] = useState<MobilePurchaseRecord | null>(null);
 
@@ -66,6 +68,45 @@ export const MobilePurchaseView: React.FC<MobilePurchaseViewProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'EASYPAISA' | 'JAZZCASH' | 'BANK'>('CASH');
   const [notes, setNotes] = useState('');
   const [autoAddToStock, setAutoAddToStock] = useState(true);
+
+  const handleOpenAddModal = () => {
+    setEditingPurchaseId(null);
+    resetForm();
+    setAutoAddToStock(true);
+    setIsAddModalOpen(true);
+  };
+
+  const handleOpenEditPurchase = (p: MobilePurchaseRecord) => {
+    setEditingPurchaseId(p.id);
+    setSellerName(p.sellerName);
+    setSellerCnic(p.sellerCnic || '');
+    setSellerPhone(p.sellerPhone || '');
+    setSellerAddress(p.sellerAddress || '');
+    setSellerPhoto(p.sellerPhoto);
+    setCnicFrontPhoto(p.cnicFrontPhoto);
+    setCnicBackPhoto(p.cnicBackPhoto);
+
+    setMobileBrandModel(p.mobileBrandModel);
+    setCondition(p.condition);
+    setImei1(p.imei1);
+    setImei2(p.imei2 || '');
+    setColor(p.color || '');
+    setRamStorage(p.ramStorage || '');
+    setMobilePhoto(p.mobilePhoto);
+    setSku(p.sku || '');
+
+    setHasBox(p.hasBox ?? true);
+    setHasCharger(p.hasCharger ?? true);
+    setHasCable(p.hasCable ?? true);
+    setHasHandsfree(p.hasHandsfree ?? false);
+    setHasWarrantyCard(p.hasWarrantyCard ?? false);
+
+    setPurchasePrice(p.purchasePrice);
+    setPaymentMethod(p.paymentMethod || 'CASH');
+    setNotes(p.notes || '');
+    setAutoAddToStock(false);
+    setIsAddModalOpen(true);
+  };
 
   // Helper to handle image uploads
   const handleImageUpload = (
@@ -110,7 +151,6 @@ export const MobilePurchaseView: React.FC<MobilePurchaseViewProps> = ({
     setPurchasePrice('');
     setPaymentMethod('CASH');
     setNotes('');
-    setAutoAddToStock(true);
   };
 
   // Submit Handler
@@ -124,13 +164,14 @@ export const MobilePurchaseView: React.FC<MobilePurchaseViewProps> = ({
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const receiptNo = `PUR-${1000 + purchases.length + 1}`;
+    const existing = purchases.find(p => p.id === editingPurchaseId);
+    const receiptNo = existing ? existing.receiptNo : `PUR-${1000 + purchases.length + 1}`;
 
-    const newRecord: MobilePurchaseRecord = {
-      id: `pur-${Date.now()}`,
+    const record: MobilePurchaseRecord = {
+      id: editingPurchaseId || `pur-${Date.now()}`,
       receiptNo,
-      date: dateStr,
-      time: timeStr,
+      date: existing ? existing.date : dateStr,
+      time: existing ? existing.time : timeStr,
       sellerName: sellerName.trim(),
       sellerCnic: sellerCnic.trim(),
       sellerPhone: sellerPhone.trim(),
@@ -157,13 +198,16 @@ export const MobilePurchaseView: React.FC<MobilePurchaseViewProps> = ({
       purchasePrice: Number(purchasePrice),
       paymentMethod,
       notes: notes.trim(),
-      createdAt: Date.now(),
+      createdAt: existing ? existing.createdAt : Date.now(),
     };
 
-    onAddPurchase(newRecord, autoAddToStock);
+    onAddPurchase(record, autoAddToStock);
     resetForm();
+    setEditingPurchaseId(null);
     setIsAddModalOpen(false);
-    setSelectedReceiptRecord(newRecord);
+    if (!existing) {
+      setSelectedReceiptRecord(record);
+    }
   };
 
   // Search Filter logic across ALL fields
@@ -402,6 +446,15 @@ export const MobilePurchaseView: React.FC<MobilePurchaseViewProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handleOpenEditPurchase(p)}
+                    className="py-1.5 px-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Edit Record"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+
                   <button
                     onClick={() => setSelectedDetailRecord(p)}
                     className="py-1.5 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"

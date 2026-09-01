@@ -6,7 +6,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendEmailVerification,
-  sendPasswordResetEmail,
+  sendPasswordResetEmail as fbSendPasswordResetEmail,
   signOut as firebaseSignOut, 
   onAuthStateChanged, 
   signInAnonymously,
@@ -42,6 +42,15 @@ export async function loginWithEmailAndPassword(email: string, pass: string) {
   }
 }
 
+export async function sendPasswordResetEmail(email: string) {
+  try {
+    return await fbSendPasswordResetEmail(auth, email);
+  } catch (error) {
+    console.error('Password Reset Error:', error);
+    throw error;
+  }
+}
+
 export async function loginAnonymously() {
   try {
     return await signInAnonymously(auth);
@@ -62,7 +71,7 @@ export async function createAndSendVerificationEmail(email: string, pass: string
     console.error('Firebase Register/Verify Error:', error);
     if (error.code === 'auth/email-already-in-use') {
       try {
-        await sendPasswordResetEmail(auth, email);
+        await fbSendPasswordResetEmail(auth, email);
         return { success: true, message: 'Account exists in Firebase. Password reset & verification link sent to email!' };
       } catch (e2) {
         throw error;

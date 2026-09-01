@@ -15,7 +15,7 @@ import {
   getStoredMobilePurchases,
   saveMobilePurchases
 } from './lib/storage';
-import { testFirestoreConnection, auth, loginAnonymously } from './lib/firebase';
+import { testFirestoreConnection, auth } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { 
   subscribeProducts, 
@@ -55,7 +55,7 @@ import { ProductInvoiceModal } from './components/ProductInvoiceModal';
 import { Footer } from './components/Footer';
 
 export default function App() {
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [settings, setSettings] = useState<AppSettings>(getStoredSettings);
   const [isLocked, setIsLocked] = useState<boolean>(true); // Locked on initial startup
   const [hasLoggedInSession, setHasLoggedInSession] = useState<boolean>(false);
@@ -81,80 +81,15 @@ export default function App() {
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
 
-  // Demo Mode States
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => localStorage.getItem('is_demo_mode') === 'true');
-  const [demoSecondsLeft, setDemoSecondsLeft] = useState<number>(1800);
-  const [showPurchaseModal, setShowPurchaseModal] = useState<boolean>(false);
-
-  // Monitor 30-minute Demo timer
-  useEffect(() => {
-    if (!isDemoMode) return;
-
-    const checkTimer = () => {
-      const demoStartStr = localStorage.getItem('demo_start_time');
-      if (!demoStartStr) {
-        setIsDemoMode(false);
-        return;
-      }
-
-      const startTime = parseInt(demoStartStr, 10);
-      const elapsedMs = Date.now() - startTime;
-      const totalAllowedMs = 30 * 60 * 1000; // 30 minutes in ms
-      const remainingSecs = Math.max(0, Math.floor((totalAllowedMs - elapsedMs) / 1000));
-
-      setDemoSecondsLeft(remainingSecs);
-
-      if (remainingSecs <= 0) {
-        // Expiration action
-        setIsDemoMode(false);
-        localStorage.removeItem('is_demo_mode');
-        localStorage.removeItem('demo_start_time');
-        auth.signOut().catch(() => {});
-        setCurrentUserId(null);
-        setHasLoggedInSession(false);
-        setIsLocked(true);
-        setShowPurchaseModal(true);
-      }
-    };
-
-    // Run immediately once
-    checkTimer();
-
-    const intervalId = setInterval(checkTimer, 1000);
-    return () => clearInterval(intervalId);
-  }, [isDemoMode]);
-
-  const handleLoginDemo = async () => {
-    try {
-      await loginAnonymously();
-      localStorage.setItem('is_demo_mode', 'true');
-      localStorage.setItem('demo_start_time', Date.now().toString());
-      setIsDemoMode(true);
-      setDemoSecondsLeft(1800);
-      setHasLoggedInSession(true);
-      setIsLocked(false);
-      setCurrentUserId('demo_user_account');
-    } catch (err) {
-      // Fallback local-only demo session in case anonymous authentication is not enabled on Firebase
-      localStorage.setItem('is_demo_mode', 'true');
-      localStorage.setItem('demo_start_time', Date.now().toString());
-      setIsDemoMode(true);
-      setDemoSecondsLeft(1800);
-      setHasLoggedInSession(true);
-      setIsLocked(false);
-      setCurrentUserId('demo_user_account');
-    }
-  };
-
   // Subscribe to Authentication changes
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
-        setCurrentUserId(user.uid);
+        setIsAuthenticated(true);
         setHasLoggedInSession(true);
         setIsLocked(false);
       } else {
-        setCurrentUserId(null);
+        setIsAuthenticated(false);
         setHasLoggedInSession(false);
         setIsLocked(true);
       }
@@ -162,9 +97,9 @@ export default function App() {
     return () => unsubAuth();
   }, []);
 
-  // Subscribe to user-specific Firestore updates
+  // Subscribe to shared Firestore updates for all authenticated users
   useEffect(() => {
-    if (!currentUserId) {
+    if (!isAuthenticated) {
       setProducts([]);
       setProductSales([]);
       setMobilePurchases([]);
@@ -176,32 +111,32 @@ export default function App() {
 
     testFirestoreConnection();
 
-    const unsubProducts = subscribeProducts(currentUserId, (remoteProducts) => {
+    const unsubProducts = subscribeProducts((remoteProducts) => {
       setProducts(remoteProducts || []);
     });
 
-    const unsubSales = subscribeProductSales(currentUserId, (remoteSales) => {
+    const unsubSales = subscribeProductSales((remoteSales) => {
       setProductSales(remoteSales || []);
     });
 
-    const unsubPurchases = subscribeMobilePurchases(currentUserId, (remotePurchases) => {
+    const unsubPurchases = subscribeMobilePurchases((remotePurchases) => {
       setMobilePurchases(remotePurchases || []);
     });
 
-    const unsubTrx = subscribeTransactions(currentUserId, (remoteTrx) => {
+    const unsubTrx = subscribeTransactions((remoteTrx) => {
       setTransactions(remoteTrx || []);
     });
 
-    const unsubBalances = subscribeDailyBalances(currentUserId, (remoteBalances) => {
+    const unsubBalances = subscribeDailyBalances((remoteBalances) => {
       setDailyBalances(remoteBalances || {});
     });
 
-    const unsubSettings = subscribeAppSettings(currentUserId, (remoteSettings) => {
+    const unsubSettings = subscribeAppSettings((remoteSettings) => {
       if (remoteSettings && remoteSettings.shopName) {
         setSettings(remoteSettings);
       } else {
         // Init settings document in cloud if none exists
-        saveAppSettingsToCloud(currentUserId, DEFAULT_SETTINGS);
+        saveAppSettingsToCloud(DEFAULT_SETTINGS);
       }
     });
 
@@ -213,7 +148,7 @@ export default function App() {
       unsubBalances();
       unsubSettings();
     };
-  }, [currentUserId]);
+  }, [isAuthenticated]);
 
 
   useEffect(() => {
@@ -259,12 +194,9 @@ export default function App() {
 
   const handleLogout = () => {
     auth.signOut().catch(() => {});
-    localStorage.removeItem('is_demo_mode');
-    localStorage.removeItem('demo_start_time');
-    setIsDemoMode(false);
-    setCurrentUserId(null);
+    setIsAuthenticated(false);
     setHasLoggedInSession(false);
-    setIsLocked(false);
+    setIsLocked(true);
   };
 
   const handleToggleTheme = () => {
@@ -272,8 +204,8 @@ export default function App() {
     const updated = { ...settings, theme: newTheme };
     setSettings(updated);
     saveSettings(updated);
-    if (currentUserId) {
-      saveAppSettingsToCloud(currentUserId, updated);
+    if (isAuthenticated) {
+      saveAppSettingsToCloud(updated);
     }
   };
 
@@ -286,8 +218,8 @@ export default function App() {
       );
       setTransactions(updated);
       setEditingTrx(null);
-      if (currentUserId) {
-        saveTransactionToCloud(currentUserId, updatedTrx);
+      if (isAuthenticated) {
+        saveTransactionToCloud(updatedTrx);
       }
     } else {
       const newTrx: Transaction = {
@@ -296,8 +228,8 @@ export default function App() {
         createdAt: Date.now(),
       };
       setTransactions([newTrx, ...transactions]);
-      if (currentUserId) {
-        saveTransactionToCloud(currentUserId, newTrx);
+      if (isAuthenticated) {
+        saveTransactionToCloud(newTrx);
       }
     }
   };
@@ -306,31 +238,37 @@ export default function App() {
   const handleCompleteProductSale = (sale: ProductSale, updatedProducts: Product[]) => {
     setProducts(updatedProducts);
     saveProducts(updatedProducts);
-    if (currentUserId) {
-      updatedProducts.forEach((p) => saveProductToCloud(currentUserId, p));
+    if (isAuthenticated) {
+      updatedProducts.forEach((p) => saveProductToCloud(p));
     }
 
     const updatedSales = [sale, ...productSales];
     setProductSales(updatedSales);
     saveProductSales(updatedSales);
-    if (currentUserId) {
-      saveProductSaleToCloud(currentUserId, sale);
+    if (isAuthenticated) {
+      saveProductSaleToCloud(sale);
     }
 
     // Open Print Bill Modal automatically!
     setActiveInvoiceSale(sale);
   };
 
-  // Add Mobile Purchase Record & optionally add to inventory stock
+  // Add or Update Mobile Purchase Record & optionally add to inventory stock
   const handleAddMobilePurchase = (record: MobilePurchaseRecord, autoAddToStock: boolean) => {
-    const updatedPurchases = [record, ...mobilePurchases];
+    const exists = mobilePurchases.some((p) => p.id === record.id);
+    let updatedPurchases: MobilePurchaseRecord[];
+    if (exists) {
+      updatedPurchases = mobilePurchases.map((p) => (p.id === record.id ? record : p));
+    } else {
+      updatedPurchases = [record, ...mobilePurchases];
+    }
     setMobilePurchases(updatedPurchases);
     saveMobilePurchases(updatedPurchases);
-    if (currentUserId) {
-      saveMobilePurchaseToCloud(currentUserId, record);
+    if (isAuthenticated) {
+      saveMobilePurchaseToCloud(record);
     }
 
-    if (autoAddToStock) {
+    if (autoAddToStock && !exists) {
       const newProduct: Product = {
         id: `prod-${Date.now()}`,
         name: `${record.mobileBrandModel} (${record.condition === 'NEW' ? 'Pin Pack' : 'Used'})`,
@@ -347,8 +285,8 @@ export default function App() {
       const updatedProducts = [newProduct, ...products];
       setProducts(updatedProducts);
       saveProducts(updatedProducts);
-      if (currentUserId) {
-        saveProductToCloud(currentUserId, newProduct);
+      if (isAuthenticated) {
+        saveProductToCloud(newProduct);
       }
     }
   };
@@ -358,8 +296,8 @@ export default function App() {
     const updated = mobilePurchases.filter((p) => p.id !== id);
     setMobilePurchases(updated);
     saveMobilePurchases(updated);
-    if (currentUserId) {
-      deleteMobilePurchaseFromCloud(currentUserId, id);
+    if (isAuthenticated) {
+      deleteMobilePurchaseFromCloud(id);
     }
   };
 
@@ -374,8 +312,8 @@ export default function App() {
         createdAt: existing ? existing.createdAt : Date.now(),
       };
       updatedProducts = products.map((p) => (p.id === id ? updatedProduct : p));
-      if (currentUserId) {
-        saveProductToCloud(currentUserId, updatedProduct);
+      if (isAuthenticated) {
+        saveProductToCloud(updatedProduct);
       }
     } else {
       const newProduct: Product = {
@@ -384,8 +322,8 @@ export default function App() {
         createdAt: Date.now(),
       };
       updatedProducts = [newProduct, ...products];
-      if (currentUserId) {
-        saveProductToCloud(currentUserId, newProduct);
+      if (isAuthenticated) {
+        saveProductToCloud(newProduct);
       }
     }
     setProducts(updatedProducts);
@@ -398,8 +336,8 @@ export default function App() {
       const updated = products.filter((p) => p.id !== id);
       setProducts(updated);
       saveProducts(updated);
-      if (currentUserId) {
-        deleteProductFromCloud(currentUserId, id);
+      if (isAuthenticated) {
+        deleteProductFromCloud(id);
       }
     }
   };
@@ -408,8 +346,8 @@ export default function App() {
   const handleDeleteTransaction = (id: string) => {
     if (confirm('Kya aap waqai yeh entry delete karna chahte hain?')) {
       setTransactions(transactions.filter((t) => t.id !== id));
-      if (currentUserId) {
-        deleteTransactionFromCloud(currentUserId, id);
+      if (isAuthenticated) {
+        deleteTransactionFromCloud(id);
       }
     }
   };
@@ -418,8 +356,8 @@ export default function App() {
   const handleSaveOpeningBalance = (balance: DailyBalance) => {
     saveDailyBalance(balance);
     setDailyBalances(getStoredDailyBalances());
-    if (currentUserId) {
-      saveDailyBalanceToCloud(currentUserId, balance);
+    if (isAuthenticated) {
+      saveDailyBalanceToCloud(balance);
     }
   };
 
@@ -427,8 +365,8 @@ export default function App() {
   const handleSaveSettings = (newSettings: AppSettings) => {
     setSettings(newSettings);
     saveSettings(newSettings);
-    if (currentUserId) {
-      saveAppSettingsToCloud(currentUserId, newSettings);
+    if (isAuthenticated) {
+      saveAppSettingsToCloud(newSettings);
     }
   };
 
@@ -438,9 +376,9 @@ export default function App() {
     setSettings(newSettings);
     saveTransactions(newTrx);
     saveSettings(newSettings);
-    if (currentUserId) {
-      newTrx.forEach((t) => saveTransactionToCloud(currentUserId, t));
-      saveAppSettingsToCloud(currentUserId, newSettings);
+    if (isAuthenticated) {
+      newTrx.forEach((t) => saveTransactionToCloud(t));
+      saveAppSettingsToCloud(newSettings);
     }
   };
 
@@ -460,35 +398,19 @@ export default function App() {
       isLight ? 'bg-neutral-100 text-neutral-900 selection:bg-red-600 selection:text-white' : 'bg-neutral-950 text-neutral-100 selection:bg-red-600 selection:text-white'
     }`}>
       
-      {/* Lock / Login Screen Overlay */}
+      {/* Login / Lock Screen Overlay */}
       {isLocked && !hasLoggedInSession && (
         <LoginScreen
           shopName={settings.shopName}
-          allowedAccounts={settings.allowedAccounts || []}
           onLoginSuccess={(email, name) => {
-            const accUserId = `account_${email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-            setCurrentUserId(accUserId);
+            setIsAuthenticated(true);
             setHasLoggedInSession(true);
             setIsLocked(false);
 
-            let currentAccs = settings.allowedAccounts || [];
-            if (currentAccs.length === 0) {
-              currentAccs = [
-                {
-                  id: 'acc-' + Date.now(),
-                  email: email,
-                  password: '',
-                  name: name || 'Shop Owner',
-                  role: 'Owner'
-                }
-              ];
-            }
-
-            const updated = { ...settings, isLocked: false, allowedAccounts: currentAccs };
+            const updated = { ...settings, isLocked: false };
             setSettings(updated);
             saveSettings(updated);
           }}
-          onLoginDemo={handleLoginDemo}
         />
       )}
 
@@ -528,21 +450,6 @@ export default function App() {
             onLogout={handleLogout}
           />
 
-          {isDemoMode && (
-            <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 text-white font-extrabold text-[11px] sm:text-xs py-2.5 px-4 shadow-md flex flex-wrap items-center justify-between gap-3 border-b border-orange-600 animate-pulse">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm">⚡</span>
-                <span><strong>Demo Account (ڈیمو موڈ):</strong> Software check karein! Tamam features perfectly active hain.</span>
-              </div>
-              <div className="flex items-center gap-2 bg-black/30 px-3 py-1 rounded-full text-white border border-white/15">
-                <span>⏱️ Baqi Time (Time Left):</span>
-                <span className="font-mono tracking-widest text-sm bg-red-600 px-2 py-0.5 rounded shadow">
-                  {Math.floor(demoSecondsLeft / 60)}m {demoSecondsLeft % 60}s
-                </span>
-              </div>
-            </div>
-          )}
-
           <main className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 py-3 sm:py-6 pb-20 md:pb-6">
             {activeTab === 'dashboard' && (
               <Dashboard
@@ -561,6 +468,10 @@ export default function App() {
                 onOpenNewExpense={() => setIsExpenseModalOpen(true)}
                 onOpenOpeningBalance={() => setIsOpeningModalOpen(true)}
                 onSelectTransaction={(trx) => setViewVoucherTrx(trx)}
+                onEditTransaction={(trx) => {
+                  setEditingTrx(trx);
+                  setIsTrxModalOpen(true);
+                }}
                 onDeleteTransaction={handleDeleteTransaction}
               />
             )}
@@ -596,6 +507,10 @@ export default function App() {
                 transactions={transactions}
                 settings={settings}
                 onSelectTransaction={(trx) => setViewVoucherTrx(trx)}
+                onEditTransaction={(trx) => {
+                  setEditingTrx(trx);
+                  setIsTrxModalOpen(true);
+                }}
                 onDeleteTransaction={handleDeleteTransaction}
               />
             )}
@@ -677,66 +592,6 @@ export default function App() {
         </>
       )}
 
-      {showPurchaseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 overflow-y-auto">
-          <div className="w-full max-w-md bg-white rounded-3xl border border-emerald-100 shadow-2xl overflow-hidden relative z-10 p-6 text-center text-slate-900">
-            
-            <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-bounce border border-rose-100">
-              <span className="text-3xl font-extrabold">⏰</span>
-            </div>
-
-            <h3 className="text-xl font-black text-slate-900 tracking-tight leading-snug">
-              Demo Account Expired!
-            </h3>
-            <h4 className="text-lg font-extrabold text-emerald-800 leading-tight">
-              (ڈیمو کا وقت ختم ہو گیا ہے)
-            </h4>
-            
-            <p className="text-xs font-bold text-red-600 mt-1.5 tracking-wider uppercase">
-              30 MINUTES TRIAL PERIOD HAS ENDED
-            </p>
-
-            <div className="my-5 p-4 bg-emerald-50/70 border border-emerald-100 rounded-2xl text-left space-y-3">
-              <p className="text-xs text-slate-700 font-bold leading-relaxed text-center">
-                Aap ka 30-minutes ka free demo trial mukammal ho chuka hai. App ka sara database mehfooz hai aur live cloud se linked hai.
-              </p>
-              <div className="border-t border-dashed border-emerald-200 pt-3">
-                <p className="text-xs font-black text-emerald-800 text-center mb-2">
-                  🚀 TO BUY THE COMPLETE SOFTWARE (سافٹ ویئر خریدنے کے لیے):
-                </p>
-                <div className="bg-slate-900 text-white rounded-xl p-3 text-center space-y-1.5">
-                  <p className="text-xs font-semibold">🏢 Company: <strong className="text-emerald-400">THE PAK HACKERS</strong></p>
-                  <p className="text-xs font-semibold">👤 Owner / Dev: <strong className="text-emerald-400">Abdul Rehman habib</strong></p>
-                  <p className="text-xs font-semibold">📞 WhatsApp: <strong className="text-emerald-400">0319-5702823</strong></p>
-                  <p className="text-[10px] text-slate-400">Unlimited Cloud Storage, Permanent License & Custom Features Support</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <a
-                href="https://wa.me/923195702823?text=Hi%20Abdul%20Rehman%20habib,%20mujay%20Balal%20Mobile%20Shop%20POS%20Software%20Khareedna%20hai."
-                target="_blank"
-                referrerPolicy="no-referrer"
-                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer no-underline"
-              >
-                💬 Rabta Karein (Contact on WhatsApp)
-              </a>
-              
-              <button
-                type="button"
-                onClick={() => setShowPurchaseModal(false)}
-                className="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs transition-all cursor-pointer border-none"
-              >
-                Close (واپس جائیں)
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
-

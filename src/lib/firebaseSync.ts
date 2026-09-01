@@ -20,14 +20,14 @@ function cleanPayload<T extends Record<string, any>>(obj: T): T {
   return result;
 }
 
+const SHOP_PATH = 'shops/mainShop';
+
 // 1. PRODUCTS
 export function subscribeProducts(
-  userId: string,
   onUpdate: (products: Product[]) => void,
   onError?: (err: any) => void
 ) {
-  if (!userId) return () => {};
-  const colPath = `users/${userId}/products`;
+  const colPath = `${SHOP_PATH}/products`;
   try {
     const q = query(collection(db, colPath));
     return onSnapshot(q, (snapshot) => {
@@ -46,21 +46,19 @@ export function subscribeProducts(
   }
 }
 
-export async function saveProductToCloud(userId: string, product: Product) {
-  if (!userId) return;
-  const docPath = `users/${userId}/products/${product.id}`;
+export async function saveProductToCloud(product: Product) {
+  const docPath = `${SHOP_PATH}/products/${product.id}`;
   try {
-    await setDoc(doc(db, 'users', userId, 'products', product.id), cleanPayload(product), { merge: true });
+    await setDoc(doc(db, SHOP_PATH, 'products', product.id), cleanPayload(product), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
   }
 }
 
-export async function deleteProductFromCloud(userId: string, productId: string) {
-  if (!userId) return;
-  const docPath = `users/${userId}/products/${productId}`;
+export async function deleteProductFromCloud(productId: string) {
+  const docPath = `${SHOP_PATH}/products/${productId}`;
   try {
-    await deleteDoc(doc(db, 'users', userId, 'products', productId));
+    await deleteDoc(doc(db, SHOP_PATH, 'products', productId));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, docPath);
   }
@@ -68,12 +66,10 @@ export async function deleteProductFromCloud(userId: string, productId: string) 
 
 // 2. PRODUCT SALES
 export function subscribeProductSales(
-  userId: string,
   onUpdate: (sales: ProductSale[]) => void,
   onError?: (err: any) => void
 ) {
-  if (!userId) return () => {};
-  const colPath = `users/${userId}/productSales`;
+  const colPath = `${SHOP_PATH}/productSales`;
   try {
     const q = query(collection(db, colPath));
     return onSnapshot(q, (snapshot) => {
@@ -81,7 +77,6 @@ export function subscribeProductSales(
       snapshot.forEach((docSnap) => {
         sales.push(docSnap.data() as ProductSale);
       });
-      // Sort newest first
       sales.sort((a, b) => b.createdAt - a.createdAt);
       onUpdate(sales);
     }, (error) => {
@@ -94,11 +89,10 @@ export function subscribeProductSales(
   }
 }
 
-export async function saveProductSaleToCloud(userId: string, sale: ProductSale) {
-  if (!userId) return;
-  const docPath = `users/${userId}/productSales/${sale.id}`;
+export async function saveProductSaleToCloud(sale: ProductSale) {
+  const docPath = `${SHOP_PATH}/productSales/${sale.id}`;
   try {
-    await setDoc(doc(db, 'users', userId, 'productSales', sale.id), cleanPayload(sale), { merge: true });
+    await setDoc(doc(db, SHOP_PATH, 'productSales', sale.id), cleanPayload(sale), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
   }
@@ -106,12 +100,10 @@ export async function saveProductSaleToCloud(userId: string, sale: ProductSale) 
 
 // 3. TRANSACTIONS
 export function subscribeTransactions(
-  userId: string,
   onUpdate: (transactions: Transaction[]) => void,
   onError?: (err: any) => void
 ) {
-  if (!userId) return () => {};
-  const colPath = `users/${userId}/transactions`;
+  const colPath = `${SHOP_PATH}/transactions`;
   try {
     const q = query(collection(db, colPath));
     return onSnapshot(q, (snapshot) => {
@@ -131,21 +123,19 @@ export function subscribeTransactions(
   }
 }
 
-export async function saveTransactionToCloud(userId: string, trx: Transaction) {
-  if (!userId) return;
-  const docPath = `users/${userId}/transactions/${trx.id}`;
+export async function saveTransactionToCloud(trx: Transaction) {
+  const docPath = `${SHOP_PATH}/transactions/${trx.id}`;
   try {
-    await setDoc(doc(db, 'users', userId, 'transactions', trx.id), cleanPayload(trx), { merge: true });
+    await setDoc(doc(db, SHOP_PATH, 'transactions', trx.id), cleanPayload(trx), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
   }
 }
 
-export async function deleteTransactionFromCloud(userId: string, trxId: string) {
-  if (!userId) return;
-  const docPath = `users/${userId}/transactions/${trxId}`;
+export async function deleteTransactionFromCloud(trxId: string) {
+  const docPath = `${SHOP_PATH}/transactions/${trxId}`;
   try {
-    await deleteDoc(doc(db, 'users', userId, 'transactions', trxId));
+    await deleteDoc(doc(db, SHOP_PATH, 'transactions', trxId));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, docPath);
   }
@@ -153,12 +143,10 @@ export async function deleteTransactionFromCloud(userId: string, trxId: string) 
 
 // 4. DAILY BALANCES
 export function subscribeDailyBalances(
-  userId: string,
   onUpdate: (balances: Record<string, DailyBalance>) => void,
   onError?: (err: any) => void
 ) {
-  if (!userId) return () => {};
-  const colPath = `users/${userId}/dailyBalances`;
+  const colPath = `${SHOP_PATH}/dailyBalances`;
   try {
     const q = query(collection(db, colPath));
     return onSnapshot(q, (snapshot) => {
@@ -180,11 +168,10 @@ export function subscribeDailyBalances(
   }
 }
 
-export async function saveDailyBalanceToCloud(userId: string, balance: DailyBalance) {
-  if (!userId) return;
-  const docPath = `users/${userId}/dailyBalances/${balance.date}`;
+export async function saveDailyBalanceToCloud(balance: DailyBalance) {
+  const docPath = `${SHOP_PATH}/dailyBalances/${balance.date}`;
   try {
-    await setDoc(doc(db, 'users', userId, 'dailyBalances', balance.date), cleanPayload(balance), { merge: true });
+    await setDoc(doc(db, SHOP_PATH, 'dailyBalances', balance.date), cleanPayload(balance), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
   }
@@ -192,14 +179,12 @@ export async function saveDailyBalanceToCloud(userId: string, balance: DailyBala
 
 // 5. APP SETTINGS
 export function subscribeAppSettings(
-  userId: string,
   onUpdate: (settings: AppSettings) => void,
   onError?: (err: any) => void
 ) {
-  if (!userId) return () => {};
-  const docPath = `users/${userId}/appSettings/global`;
+  const docPath = `${SHOP_PATH}/appSettings/global`;
   try {
-    return onSnapshot(doc(db, 'users', userId, 'appSettings', 'global'), (docSnap) => {
+    return onSnapshot(doc(db, SHOP_PATH, 'appSettings', 'global'), (docSnap) => {
       if (docSnap.exists()) {
         onUpdate(docSnap.data() as AppSettings);
       }
@@ -213,11 +198,10 @@ export function subscribeAppSettings(
   }
 }
 
-export async function saveAppSettingsToCloud(userId: string, settings: AppSettings) {
-  if (!userId) return;
-  const docPath = `users/${userId}/appSettings/global`;
+export async function saveAppSettingsToCloud(settings: AppSettings) {
+  const docPath = `${SHOP_PATH}/appSettings/global`;
   try {
-    await setDoc(doc(db, 'users', userId, 'appSettings', 'global'), cleanPayload(settings), { merge: true });
+    await setDoc(doc(db, SHOP_PATH, 'appSettings', 'global'), cleanPayload(settings), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
   }
@@ -225,12 +209,10 @@ export async function saveAppSettingsToCloud(userId: string, settings: AppSettin
 
 // 6. MOBILE PURCHASES
 export function subscribeMobilePurchases(
-  userId: string,
   onUpdate: (purchases: MobilePurchaseRecord[]) => void,
   onError?: (err: any) => void
 ) {
-  if (!userId) return () => {};
-  const colPath = `users/${userId}/mobilePurchases`;
+  const colPath = `${SHOP_PATH}/mobilePurchases`;
   try {
     const q = query(collection(db, colPath));
     return onSnapshot(q, (snapshot) => {
@@ -249,21 +231,19 @@ export function subscribeMobilePurchases(
   }
 }
 
-export async function saveMobilePurchaseToCloud(userId: string, purchase: MobilePurchaseRecord) {
-  if (!userId) return;
-  const docPath = `users/${userId}/mobilePurchases/${purchase.id}`;
+export async function saveMobilePurchaseToCloud(purchase: MobilePurchaseRecord) {
+  const docPath = `${SHOP_PATH}/mobilePurchases/${purchase.id}`;
   try {
-    await setDoc(doc(db, 'users', userId, 'mobilePurchases', purchase.id), cleanPayload(purchase), { merge: true });
+    await setDoc(doc(db, SHOP_PATH, 'mobilePurchases', purchase.id), cleanPayload(purchase), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
   }
 }
 
-export async function deleteMobilePurchaseFromCloud(userId: string, purchaseId: string) {
-  if (!userId) return;
-  const docPath = `users/${userId}/mobilePurchases/${purchaseId}`;
+export async function deleteMobilePurchaseFromCloud(purchaseId: string) {
+  const docPath = `${SHOP_PATH}/mobilePurchases/${purchaseId}`;
   try {
-    await deleteDoc(doc(db, 'users', userId, 'mobilePurchases', purchaseId));
+    await deleteDoc(doc(db, SHOP_PATH, 'mobilePurchases', purchaseId));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, docPath);
   }

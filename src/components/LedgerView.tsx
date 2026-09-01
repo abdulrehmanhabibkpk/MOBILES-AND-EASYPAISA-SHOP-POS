@@ -8,6 +8,7 @@ import {
   ArrowDownRight, 
   ArrowUpRight, 
   TrendingDown,
+  Edit2
 } from 'lucide-react';
 import { Transaction, AppSettings, PaymentMethod } from '../types';
 import { generateMonthlyReportPDF } from '../lib/pdf';
@@ -17,6 +18,7 @@ interface LedgerViewProps {
   transactions: Transaction[];
   settings: AppSettings;
   onSelectTransaction: (trx: Transaction) => void;
+  onEditTransaction: (trx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
 }
 
@@ -24,6 +26,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
   transactions,
   settings,
   onSelectTransaction,
+  onEditTransaction,
   onDeleteTransaction,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -304,6 +307,13 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                             title="View Voucher"
                           >
                             <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => onEditTransaction(t)}
+                            className={`p-1.5 rounded-lg ${isLight ? 'bg-blue-50 hover:bg-blue-100 text-blue-700' : 'bg-slate-800 hover:bg-slate-700 text-blue-400'} transition-colors cursor-pointer`}
+                            title="Edit Transaction"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => onDeleteTransaction(t.id)}

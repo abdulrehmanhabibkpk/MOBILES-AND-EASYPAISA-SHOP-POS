@@ -2,7 +2,7 @@
   "entities": {
     "product": {
       "title": "Product",
-      "description": "Inventory product item in Balal Mobile Shop",
+      "description": "Inventory product item in shared shop",
       "type": "object",
       "properties": {
         "id": { "type": "string", "maxLength": 128 },
@@ -91,7 +91,7 @@
     },
     "appSettings": {
       "title": "App Settings",
-      "description": "Global settings for Balal Mobile Shop",
+      "description": "Global settings for shared shop",
       "type": "object",
       "properties": {
         "shopName": { "type": "string", "maxLength": 200 },
@@ -131,33 +131,33 @@
     }
   },
   "firestore": {
-    "/users/{userId}/products/{productId}": {
+    "/shops/mainShop/products/{productId}": {
       "schema": { "$ref": "#/entities/product" },
-      "description": "User-specific collection of shop inventory products"
+      "description": "Shared shop inventory products"
     },
-    "/users/{userId}/productSales/{saleId}": {
+    "/shops/mainShop/productSales/{saleId}": {
       "schema": { "$ref": "#/entities/productSale" },
-      "description": "User-specific collection of product sales invoices"
+      "description": "Shared shop product sales invoices"
     },
-    "/users/{userId}/transactions/{transactionId}": {
+    "/shops/mainShop/transactions/{transactionId}": {
       "schema": { "$ref": "#/entities/transaction" },
-      "description": "User-specific collection of financial ledger transactions"
+      "description": "Shared shop financial ledger transactions"
     },
-    "/users/{userId}/expenses/{expenseId}": {
+    "/shops/mainShop/expenses/{expenseId}": {
       "schema": { "$ref": "#/entities/expense" },
-      "description": "User-specific collection of shop operating expenses"
+      "description": "Shared shop operating expenses"
     },
-    "/users/{userId}/dailyBalances/{date}": {
+    "/shops/mainShop/dailyBalances/{date}": {
       "schema": { "$ref": "#/entities/dailyBalance" },
-      "description": "User-specific collection of daily opening balances keyed by YYYY-MM-DD"
+      "description": "Shared shop daily opening balances"
     },
-    "/users/{userId}/appSettings/{settingsId}": {
+    "/shops/mainShop/appSettings/{settingsId}": {
       "schema": { "$ref": "#/entities/appSettings" },
-      "description": "User-specific global settings document"
+      "description": "Shared shop global settings document"
     },
-    "/users/{userId}/mobilePurchases/{purchaseId}": {
+    "/shops/mainShop/mobilePurchases/{purchaseId}": {
       "schema": { "$ref": "#/entities/mobilePurchase" },
-      "description": "User-specific collection of mobile buy/purchase entries"
+      "description": "Shared shop mobile buy/purchase entries"
     }
   }
 }
