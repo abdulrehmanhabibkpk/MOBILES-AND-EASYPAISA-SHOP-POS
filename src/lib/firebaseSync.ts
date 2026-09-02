@@ -7,7 +7,7 @@ import {
   query
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
-import { Product, ProductSale, Transaction, DailyBalance, AppSettings, MobilePurchaseRecord } from '../types';
+import { Product, ProductSale, Transaction, DailyBalance, AppSettings, MobilePurchaseRecord, Supplier } from '../types';
 
 // Helper to sanitize objects for Firestore (ensure no undefined fields)
 function cleanPayload<T extends Record<string, any>>(obj: T): T {
@@ -244,6 +244,48 @@ export async function deleteMobilePurchaseFromCloud(purchaseId: string) {
   const docPath = `${SHOP_PATH}/mobilePurchases/${purchaseId}`;
   try {
     await deleteDoc(doc(db, SHOP_PATH, 'mobilePurchases', purchaseId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, docPath);
+  }
+}
+
+// 7. SUPPLIERS
+export function subscribeSuppliers(
+  onUpdate: (suppliers: Supplier[]) => void,
+  onError?: (err: any) => void
+) {
+  const colPath = `${SHOP_PATH}/suppliers`;
+  try {
+    const q = query(collection(db, colPath));
+    return onSnapshot(q, (snapshot) => {
+      const suppliers: Supplier[] = [];
+      snapshot.forEach((docSnap) => {
+        suppliers.push(docSnap.data() as Supplier);
+      });
+      onUpdate(suppliers);
+    }, (error) => {
+      if (onError) onError(error);
+      handleFirestoreError(error, OperationType.GET, colPath);
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, colPath);
+    return () => {};
+  }
+}
+
+export async function saveSupplierToCloud(supplier: Supplier) {
+  const docPath = `${SHOP_PATH}/suppliers/${supplier.id}`;
+  try {
+    await setDoc(doc(db, SHOP_PATH, 'suppliers', supplier.id), cleanPayload(supplier), { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, docPath);
+  }
+}
+
+export async function deleteSupplierFromCloud(supplierId: string) {
+  const docPath = `${SHOP_PATH}/suppliers/${supplierId}`;
+  try {
+    await deleteDoc(doc(db, SHOP_PATH, 'suppliers', supplierId));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, docPath);
   }

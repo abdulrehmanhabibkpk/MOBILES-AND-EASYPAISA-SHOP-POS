@@ -1,4 +1,4 @@
-import { Transaction, Expense, DailyBalance, AppSettings, CustomerSummary, Product, ProductSale, MobilePurchaseRecord } from '../types';
+import { Transaction, Expense, DailyBalance, AppSettings, CustomerSummary, Product, ProductSale, MobilePurchaseRecord, Supplier } from '../types';
 
 const TRANSACTIONS_KEY = 'ep_ledger_transactions_v1';
 const EXPENSES_KEY = 'ep_ledger_expenses_v1';
@@ -450,51 +450,26 @@ const SAMPLE_MOBILE_PURCHASES: MobilePurchaseRecord[] = [
   {
     id: 'pur-1001',
     receiptNo: 'PUR-1001',
-    date: new Date().toISOString().split('T')[0],
-    time: '02:30 PM',
-    sellerName: 'Muhammad Hamza',
-    sellerCnic: '37405-1234567-1',
-    sellerPhone: '0300-5544332',
-    sellerAddress: 'Sarai Saleh, Haripur',
-    mobileBrandModel: 'Vivo Y21 (4GB / 64GB)',
+    date: '2026-09-02',
+    time: '07:10 AM',
+    sellerName: 'Hassnain Jaleel',
+    sellerCnic: '5440079648965',
+    sellerPhone: '03078382955',
+    sellerAddress: 'Moh Raheem Colony Jail Road Hudda Quetta',
+    mobileBrandModel: 'Tecno Camon 30 12/256',
     condition: 'USED',
-    imei1: '862019048392019',
-    imei2: '862019048392020',
-    color: 'Diamond Blue',
-    ramStorage: '4GB / 64GB',
+    imei1: '357450680415326',
+    imei2: '357450680415326',
+    color: 'White (12/256)',
+    ramStorage: '12GB / 256GB',
     hasBox: true,
     hasCharger: true,
     hasCable: true,
     hasHandsfree: false,
-    hasWarrantyCard: true,
-    purchasePrice: 28500,
+    hasWarrantyCard: false,
+    purchasePrice: 44000,
     paymentMethod: 'CASH',
-    notes: 'Slight scratch on back cover. All buttons fully working.',
-    createdAt: Date.now() - 1000 * 60 * 60 * 5,
-  },
-  {
-    id: 'pur-1002',
-    receiptNo: 'PUR-1002',
-    date: new Date().toISOString().split('T')[0],
-    time: '04:15 PM',
-    sellerName: 'Shahid Khan',
-    sellerCnic: '13101-9876543-3',
-    sellerPhone: '0333-9988771',
-    sellerAddress: 'GT Road, Haripur',
-    mobileBrandModel: 'Samsung Galaxy A14 (Box Pack)',
-    condition: 'NEW',
-    imei1: '359102938475819',
-    imei2: '359102938475820',
-    color: 'Black',
-    ramStorage: '6GB / 128GB',
-    hasBox: true,
-    hasCharger: true,
-    hasCable: true,
-    hasHandsfree: true,
-    hasWarrantyCard: true,
-    purchasePrice: 36000,
-    paymentMethod: 'EASYPAISA',
-    notes: 'Brand new pin pack mobile bought from wholesale seller.',
+    notes: 'Tecno Camon 30 12/256 Used Mobile Purchase',
     createdAt: Date.now() - 1000 * 60 * 60 * 2,
   }
 ];
@@ -506,7 +481,15 @@ export const getStoredMobilePurchases = (): MobilePurchaseRecord[] => {
       localStorage.setItem(MOBILE_PURCHASES_KEY, JSON.stringify(SAMPLE_MOBILE_PURCHASES));
       return SAMPLE_MOBILE_PURCHASES;
     }
-    return JSON.parse(data);
+    let parsed: MobilePurchaseRecord[] = JSON.parse(data);
+    // Remove old Abdul Rehman record if present
+    parsed = parsed.filter(p => p.id !== 'pur-1003' && !p.sellerName?.includes('Abdul Rehman'));
+    const hasHassnain = parsed.some(p => p.receiptNo === 'PUR-1001' || p.sellerName?.includes('Hassnain'));
+    if (!hasHassnain) {
+      parsed = [SAMPLE_MOBILE_PURCHASES[0], ...parsed];
+    }
+    localStorage.setItem(MOBILE_PURCHASES_KEY, JSON.stringify(parsed));
+    return parsed;
   } catch {
     return SAMPLE_MOBILE_PURCHASES;
   }
@@ -514,4 +497,46 @@ export const getStoredMobilePurchases = (): MobilePurchaseRecord[] => {
 
 export const saveMobilePurchases = (records: MobilePurchaseRecord[]): void => {
   localStorage.setItem(MOBILE_PURCHASES_KEY, JSON.stringify(records));
+};
+
+export const SUPPLIERS_KEY = 'balal_mobiles_suppliers';
+
+const SAMPLE_SUPPLIERS: Supplier[] = [
+  {
+    id: 'sup-1',
+    name: 'Al-Madina Mobile Wholesale',
+    phone: '0300-5544332',
+    cnic: '37405-1122334-1',
+    address: 'Chowk Bazaar, Rawalpindi',
+    companyName: 'Al-Madina Traders',
+    openingBalance: 15000,
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 5,
+  },
+  {
+    id: 'sup-2',
+    name: 'Master Electronics & Mobiles',
+    phone: '0321-9988776',
+    cnic: '37405-5566778-9',
+    address: 'Main Market, Abbottabad',
+    companyName: 'Master Distributors',
+    openingBalance: 0,
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
+  }
+];
+
+export const getStoredSuppliers = (): Supplier[] => {
+  try {
+    const data = localStorage.getItem(SUPPLIERS_KEY);
+    if (!data) {
+      localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(SAMPLE_SUPPLIERS));
+      return SAMPLE_SUPPLIERS;
+    }
+    return JSON.parse(data);
+  } catch {
+    return SAMPLE_SUPPLIERS;
+  }
+};
+
+export const saveSuppliers = (suppliers: Supplier[]): void => {
+  localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(suppliers));
 };

@@ -27,7 +27,7 @@ import { AppSettings } from '../types';
 import { CashCalculatorModal } from './CashCalculatorModal';
 import { t } from '../lib/i18n';
 
-export type NavTab = 'dashboard' | 'pos' | 'inventory' | 'purchases' | 'ledger' | 'reports' | 'customers' | 'barcodes' | 'settings';
+export type NavTab = 'dashboard' | 'pos' | 'inventory' | 'purchases' | 'suppliers' | 'stock-ledger' | 'ledger' | 'reports' | 'customers' | 'barcodes' | 'settings';
 
 interface NavbarProps {
   activeTab: NavTab;
@@ -67,6 +67,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'pos', title: 'Sell Products / POS', icon: ShoppingCart },
     { id: 'purchases', title: 'Mobile Buy / Purchase Register', icon: Smartphone },
     { id: 'inventory', title: 'Stock Inventory', icon: Package },
+    { id: 'suppliers', title: 'Supplier Directory & Khata', icon: Users },
+    { id: 'stock-ledger', title: 'Mobile & Inventory Ledger', icon: BookOpen },
     { id: 'barcodes', title: 'Barcode Studio & Printing', icon: QrCode },
     { id: 'ledger', title: 'EasyPaisa Ledger', icon: BookOpen },
     { id: 'customers', title: 'Customer Khata', icon: Users },

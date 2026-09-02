@@ -135,7 +135,7 @@ export interface MobilePurchaseRecord {
   date: string;             // YYYY-MM-DD
   time: string;             // HH:mm AM/PM
   
-  // Seller Information
+  // Seller / Supplier Information
   sellerName: string;
   sellerCnic: string;
   sellerPhone: string;
@@ -163,7 +163,26 @@ export interface MobilePurchaseRecord {
   // Financial & Remarks
   purchasePrice: number;    // خرید قیمت (PKR)
   paymentMethod: 'CASH' | 'EASYPAISA' | 'JAZZCASH' | 'BANK';
+  supplierId?: string;      // Optional supplier link
   sku?: string;             // SKU or Barcode Number
   notes?: string;
   createdAt: number;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  phone: string;
+  cnic?: string;
+  address?: string;
+  companyName?: string; // e.g. Lahore Wholesale Market, Oppo Distributor
+  openingBalance: number; // Opening balance / Dues
+  createdAt: number;
+}
+
+export interface SupplierSummary {
+  supplier: Supplier;
+  totalPurchasedAmount: number;
+  totalItemsCount: number;
+  lastPurchaseDate: string;
 }

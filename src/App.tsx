@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Transaction, DailyBalance, AppSettings, Product, ProductSale, MobilePurchaseRecord } from './types';
+import { Transaction, DailyBalance, AppSettings, Product, ProductSale, MobilePurchaseRecord, Supplier } from './types';
 import { 
   getStoredTransactions, 
   saveTransactions, 
@@ -13,7 +13,9 @@ import {
   getStoredProductSales,
   saveProductSales,
   getStoredMobilePurchases,
-  saveMobilePurchases
+  saveMobilePurchases,
+  getStoredSuppliers,
+  saveSuppliers
 } from './lib/storage';
 import { testFirestoreConnection, auth } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -24,6 +26,7 @@ import {
   subscribeDailyBalances, 
   subscribeAppSettings,
   subscribeMobilePurchases,
+  subscribeSuppliers,
   saveProductToCloud,
   deleteProductFromCloud,
   saveProductSaleToCloud,
@@ -32,7 +35,9 @@ import {
   saveDailyBalanceToCloud,
   saveAppSettingsToCloud,
   saveMobilePurchaseToCloud,
-  deleteMobilePurchaseFromCloud
+  deleteMobilePurchaseFromCloud,
+  saveSupplierToCloud,
+  deleteSupplierFromCloud
 } from './lib/firebaseSync';
 
 import { LockScreen } from './components/LockScreen';
@@ -42,6 +47,8 @@ import { Dashboard } from './components/Dashboard';
 import { PosView } from './components/PosView';
 import { InventoryView } from './components/InventoryView';
 import { MobilePurchaseView } from './components/MobilePurchaseView';
+import { SupplierLedger } from './components/SupplierLedger';
+import { InventoryLedgerView } from './components/InventoryLedgerView';
 import { LedgerView } from './components/LedgerView';
 import { ReportsView } from './components/ReportsView';
 import { CustomerLedger } from './components/CustomerLedger';
@@ -68,6 +75,7 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>(getStoredProducts);
   const [productSales, setProductSales] = useState<ProductSale[]>(getStoredProductSales);
   const [mobilePurchases, setMobilePurchases] = useState<MobilePurchaseRecord[]>(getStoredMobilePurchases);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(getStoredSuppliers);
   const [activeInvoiceSale, setActiveInvoiceSale] = useState<ProductSale | null>(null);
 
   // Modals state
@@ -120,7 +128,35 @@ export default function App() {
     });
 
     const unsubPurchases = subscribeMobilePurchases((remotePurchases) => {
-      setMobilePurchases(remotePurchases || []);
+      if (remotePurchases && remotePurchases.length > 0) {
+        // Filter out old Abdul Rehman record if present in cloud
+        const cleanRemote = remotePurchases.filter(p => p.id !== 'pur-1003' && !p.sellerName?.includes('Abdul Rehman'));
+        if (cleanRemote.length !== remotePurchases.length) {
+          deleteMobilePurchaseFromCloud('pur-1003');
+        }
+        const hasHassnain = cleanRemote.some(p => p.receiptNo === 'PUR-1001' || p.sellerName?.includes('Hassnain'));
+        if (!hasHassnain) {
+          const localP = getStoredMobilePurchases();
+          setMobilePurchases(localP);
+          localP.forEach((p) => saveMobilePurchaseToCloud(p));
+        } else {
+          setMobilePurchases(cleanRemote);
+        }
+      } else {
+        const localP = getStoredMobilePurchases();
+        setMobilePurchases(localP);
+        localP.forEach((p) => saveMobilePurchaseToCloud(p));
+      }
+    });
+
+    const unsubSuppliers = subscribeSuppliers((remoteSuppliers) => {
+      if (remoteSuppliers && remoteSuppliers.length > 0) {
+        setSuppliers(remoteSuppliers);
+      } else {
+        const localS = getStoredSuppliers();
+        setSuppliers(localS);
+        localS.forEach((s) => saveSupplierToCloud(s));
+      }
     });
 
     const unsubTrx = subscribeTransactions((remoteTrx) => {
@@ -144,6 +180,7 @@ export default function App() {
       unsubProducts();
       unsubSales();
       unsubPurchases();
+      unsubSuppliers();
       unsubTrx();
       unsubBalances();
       unsubSettings();
@@ -253,7 +290,7 @@ export default function App() {
     setActiveInvoiceSale(sale);
   };
 
-  // Add or Update Mobile Purchase Record & optionally add to inventory stock
+  // Add or Update Mobile Purchase Record & sync with inventory stock and ledger
   const handleAddMobilePurchase = (record: MobilePurchaseRecord, autoAddToStock: boolean) => {
     const exists = mobilePurchases.some((p) => p.id === record.id);
     let updatedPurchases: MobilePurchaseRecord[];
@@ -268,25 +305,55 @@ export default function App() {
       saveMobilePurchaseToCloud(record);
     }
 
-    if (autoAddToStock && !exists) {
-      const newProduct: Product = {
-        id: `prod-${Date.now()}`,
-        name: `${record.mobileBrandModel} (${record.condition === 'NEW' ? 'Pin Pack' : 'Used'})`,
-        category: 'MOBILES',
-        purchasePrice: record.purchasePrice,
-        salePrice: Math.round(record.purchasePrice * 1.1), // Default 10% markup
-        stock: 1,
-        image: record.mobilePhoto || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=400&q=80',
-        brandOrModel: record.mobileBrandModel,
-        imeiOrSerial: record.imei1,
+    // Always sync with Stock Inventory / POS
+    const productData: Product = {
+      id: `prod-${record.id}`,
+      name: `${record.mobileBrandModel} (${record.condition === 'NEW' ? 'Pin Pack' : 'Used'})`,
+      category: 'MOBILES',
+      purchasePrice: record.purchasePrice,
+      salePrice: Math.round(record.purchasePrice * 1.1),
+      stock: 1,
+      image: record.mobilePhoto || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=400&q=80',
+      brandOrModel: record.mobileBrandModel,
+      imeiOrSerial: record.imei1,
+      createdAt: Date.now(),
+    };
+
+    const prodExists = products.some((p) => p.id === productData.id || (record.imei1 && p.imeiOrSerial === record.imei1));
+    let updatedProducts: Product[];
+    if (prodExists) {
+      updatedProducts = products.map((p) => (p.id === productData.id || (record.imei1 && p.imeiOrSerial === record.imei1) ? { ...p, ...productData, id: p.id } : p));
+    } else {
+      updatedProducts = [productData, ...products];
+    }
+    setProducts(updatedProducts);
+    saveProducts(updatedProducts);
+    if (isAuthenticated) {
+      updatedProducts.forEach((p) => saveProductToCloud(p));
+    }
+
+    // Also add purchase transaction to Ledger if new
+    if (!exists) {
+      const newTrx: Transaction = {
+        id: `trx-pur-${record.id}`,
+        type: 'EXPENSE',
+        customerName: record.sellerName,
+        customerPhone: record.sellerPhone,
+        easyPaisaAmount: record.paymentMethod !== 'CASH' ? record.purchasePrice : 0,
+        cashAmount: record.paymentMethod === 'CASH' ? record.purchasePrice : 0,
+        expenseAmount: record.purchasePrice,
+        feeProfit: 0,
+        paymentMethod: record.paymentMethod || 'CASH',
+        notes: `Mobile Purchase: ${record.mobileBrandModel} (IMEI: ${record.imei1})`,
+        date: record.date,
+        time: record.time,
         createdAt: Date.now(),
       };
-
-      const updatedProducts = [newProduct, ...products];
-      setProducts(updatedProducts);
-      saveProducts(updatedProducts);
+      const updatedTrxList = [newTrx, ...transactions];
+      setTransactions(updatedTrxList);
+      saveTransactions(updatedTrxList);
       if (isAuthenticated) {
-        saveProductToCloud(newProduct);
+        saveTransactionToCloud(newTrx);
       }
     }
   };
@@ -298,6 +365,27 @@ export default function App() {
     saveMobilePurchases(updated);
     if (isAuthenticated) {
       deleteMobilePurchaseFromCloud(id);
+    }
+  };
+
+  // Add / Edit Supplier
+  const handleSaveSupplier = (supplier: Supplier) => {
+    const updated = suppliers.some((s) => s.id === supplier.id)
+      ? suppliers.map((s) => (s.id === supplier.id ? supplier : s))
+      : [supplier, ...suppliers];
+    setSuppliers(updated);
+    saveSuppliers(updated);
+    if (isAuthenticated) {
+      saveSupplierToCloud(supplier);
+    }
+  };
+
+  const handleDeleteSupplier = (id: string) => {
+    const updated = suppliers.filter((s) => s.id !== id);
+    setSuppliers(updated);
+    saveSuppliers(updated);
+    if (isAuthenticated) {
+      deleteSupplierFromCloud(id);
     }
   };
 
@@ -489,6 +577,25 @@ export default function App() {
                 purchases={mobilePurchases}
                 onAddPurchase={handleAddMobilePurchase}
                 onDeletePurchase={handleDeleteMobilePurchase}
+                settings={settings}
+              />
+            )}
+
+            {activeTab === 'suppliers' && (
+              <SupplierLedger
+                suppliers={suppliers}
+                mobilePurchases={mobilePurchases}
+                settings={settings}
+                onSaveSupplier={handleSaveSupplier}
+                onDeleteSupplier={handleDeleteSupplier}
+              />
+            )}
+
+            {activeTab === 'stock-ledger' && (
+              <InventoryLedgerView
+                products={products}
+                mobilePurchases={mobilePurchases}
+                productSales={productSales}
                 settings={settings}
               />
             )}
