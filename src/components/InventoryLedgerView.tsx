@@ -19,6 +19,12 @@ export const InventoryLedgerView: React.FC<InventoryLedgerViewProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'MOBILES' | 'PURCHASES' | 'SALES'>('ALL');
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 3); // Default last 3 months
+    return d.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   const isLight = settings.theme === 'light';
 
@@ -66,11 +72,12 @@ export const InventoryLedgerView: React.FC<InventoryLedgerViewProps> = ({
   ].sort((a, b) => b.date.localeCompare(a.date));
 
   const filteredItems = ledgerItems.filter((item) => {
+    const inDateRange = item.date >= startDate && item.date <= endDate;
     const matchSearch =
       item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.subtitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.date.includes(searchTerm);
-    if (!matchSearch) return false;
+    if (!inDateRange || !matchSearch) return false;
     if (filterType === 'MOBILES' && item.type !== 'STOCK_ITEM' && !item.title.includes('Mobile')) return false;
     if (filterType === 'PURCHASES' && item.type !== 'MOBILE_PURCHASE') return false;
     if (filterType === 'SALES' && item.type !== 'SALE_INVOICE') return false;
@@ -80,7 +87,7 @@ export const InventoryLedgerView: React.FC<InventoryLedgerViewProps> = ({
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
     doc.setFillColor(16, 185, 129);
-    doc.rect(0, 0, 210, 32, 'F');
+    doc.rect(0, 0, 210, 36, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(15);
     doc.setFont('helvetica', 'bold');
@@ -88,7 +95,7 @@ export const InventoryLedgerView: React.FC<InventoryLedgerViewProps> = ({
     doc.setFontSize(11);
     doc.text('MOBILE & INVENTORY STOCK LEDGER STATEMENT', 105, 20, { align: 'center' });
     doc.setFontSize(8);
-    doc.text(`Contact: Umer Ali (${settings.phone || '03319348330'})`, 105, 27, { align: 'center' });
+    doc.text(`Period: ${startDate} to ${endDate} | Contact: ${settings.phone || '03319348330'}`, 105, 28, { align: 'center' });
 
     const rows = filteredItems.map((item, idx) => [
       idx + 1,
@@ -100,7 +107,7 @@ export const InventoryLedgerView: React.FC<InventoryLedgerViewProps> = ({
     ]);
 
     autoTable(doc, {
-      startY: 40,
+      startY: 42,
       head: [['#', 'Date & Time', 'Type', 'Description', 'Details', 'Amount']],
       body: rows,
       theme: 'striped',
@@ -108,42 +115,66 @@ export const InventoryLedgerView: React.FC<InventoryLedgerViewProps> = ({
       styles: { fontSize: 8, cellPadding: 3 },
     });
 
-    doc.save('Inventory_Stock_Ledger.pdf');
+    doc.save(`Stock_Ledger_${startDate}_to_${endDate}.pdf`);
   };
 
   return (
     <div className="space-y-4 sm:space-y-6 font-sans">
       
-      {/* Header */}
-      <div className={`${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} border p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 shadow-sm`}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0">
-            <BookOpen className="w-5 h-5" />
+      {/* Header & Date Range Filter Bar */}
+      <div className={`${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} border p-4 sm:p-5 rounded-2xl space-y-4 shadow-sm`}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className={`text-base sm:text-lg font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Mobile & Inventory Stock Ledger</h2>
+              <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Comprehensive statement of all mobile purchases, stock inventory valuation & sales</p>
+            </div>
           </div>
-          <div>
-            <h2 className={`text-base sm:text-lg font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Mobile & Inventory Stock Ledger</h2>
-            <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Comprehensive statement of all mobile purchases, stock inventory valuation & sales</p>
+
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search items, model, date..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`w-full pl-9 pr-3 py-2 ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'} border rounded-xl text-xs outline-none focus:border-emerald-500`}
+              />
+            </div>
+            <button
+              onClick={handleDownloadPDF}
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shrink-0 cursor-pointer"
+            >
+              <FileDown className="w-4 h-4" />
+              <span>PDF Statement</span>
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+        {/* Date Range Inputs Row */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
+          <div>
+            <label className={`block text-[11px] font-bold mb-1 ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>Start Date (از تاریخ):</label>
             <input
-              type="text"
-              placeholder="Search items, model, date..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-9 pr-3 py-2 ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'} border rounded-xl text-xs outline-none focus:border-emerald-500`}
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className={`w-full px-3 py-2 ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'} border rounded-xl text-xs font-mono outline-none focus:border-emerald-500`}
             />
           </div>
-          <button
-            onClick={handleDownloadPDF}
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shrink-0 cursor-pointer"
-          >
-            <FileDown className="w-4 h-4" />
-            <span>PDF Statement</span>
-          </button>
+          <div>
+            <label className={`block text-[11px] font-bold mb-1 ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>End Date (تا تاریخ):</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className={`w-full px-3 py-2 ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-800 border-slate-700 text-white'} border rounded-xl text-xs font-mono outline-none focus:border-emerald-500`}
+            />
+          </div>
         </div>
       </div>
 
