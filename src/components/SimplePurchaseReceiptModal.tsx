@@ -1,6 +1,6 @@
 import React from 'react';
 import { MobilePurchaseRecord, AppSettings } from '../types';
-import { X, Printer, Share2, CheckCircle2, XCircle, Smartphone, ShieldCheck, User } from 'lucide-react';
+import { X, Printer, Share2, CheckCircle2, XCircle, Smartphone, ShieldCheck, User, Image as ImageIcon } from 'lucide-react';
 
 interface SimplePurchaseReceiptModalProps {
   record: MobilePurchaseRecord | null;
@@ -47,13 +47,13 @@ export const SimplePurchaseReceiptModal: React.FC<SimplePurchaseReceiptModalProp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white text-slate-900 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden border border-slate-200 my-auto print:max-w-none print:w-full print:shadow-none print:border-none print:m-0 print:rounded-none">
+      <div className="bg-white text-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200 my-auto print:max-w-none print:w-full print:shadow-none print:border-none print:m-0 print:rounded-none">
         
         {/* Header Control Buttons (Hidden on Print) */}
         <div className="p-3 bg-slate-100 border-b border-slate-200 flex items-center justify-between print:hidden">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-extrabold text-xs text-slate-700">Mobile Purchase Receipt</span>
+            <span className="font-extrabold text-xs text-slate-700">Official Mobile Purchase Deed & Receipt</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -83,7 +83,7 @@ export const SimplePurchaseReceiptModal: React.FC<SimplePurchaseReceiptModalProp
         </div>
 
         {/* PRINTABLE RECEIPT CONTENT */}
-        <div className="p-5 sm:p-7 space-y-5 print:p-4 print:space-y-4 text-slate-900 font-sans">
+        <div className="p-6 sm:p-8 space-y-5 print:p-4 print:space-y-3 text-slate-900 font-sans">
           
           {/* Shop Header */}
           <div className="border-b-2 border-slate-900 pb-4 text-center space-y-1">
@@ -97,7 +97,7 @@ export const SimplePurchaseReceiptModal: React.FC<SimplePurchaseReceiptModalProp
               {settings.address || 'GT Road, Haripur'} | Contact: {settings.phone || '0331-9348330'}
             </p>
             <div className="inline-block mt-2 px-4 py-1 bg-slate-900 text-white text-xs font-black rounded-full uppercase tracking-wider print:border print:border-black print:bg-white print:text-black">
-              MOBILE PURCHASE & SALE DEED RECEIPT
+              OFFICIAL MOBILE PURCHASE & VERIFICATION DEED
             </div>
           </div>
 
@@ -113,41 +113,68 @@ export const SimplePurchaseReceiptModal: React.FC<SimplePurchaseReceiptModalProp
             </div>
           </div>
 
-          {/* Seller Information Box */}
-          <div className="border border-slate-300 rounded-xl p-3.5 space-y-2 bg-slate-50/50 print:bg-white print:border-black">
+          {/* Seller Information & Photos Section */}
+          <div className="border border-slate-300 rounded-2xl p-4 space-y-3 bg-slate-50/50 print:bg-white print:border-black">
             <div className="flex items-center gap-2 border-b border-slate-200 pb-2 text-xs font-black text-slate-800 uppercase">
               <User className="w-4 h-4 text-emerald-600 print:text-black" />
-              <span>SELLER INFORMATION</span>
+              <span>SELLER INFORMATION & VERIFICATION PHOTOS</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div>
-                <span className="text-slate-500 font-semibold block">Seller Name:</span>
-                <span className="font-extrabold text-sm text-slate-900">{record.sellerName}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+              {/* Details Column */}
+              <div className="sm:col-span-2 space-y-2 text-xs">
+                <div>
+                  <span className="text-slate-500 font-semibold block text-[11px]">Seller Full Name:</span>
+                  <span className="font-extrabold text-sm text-slate-900">{record.sellerName}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-semibold block text-[11px]">CNIC Number:</span>
+                  <span className="font-mono font-bold text-sm text-slate-900 tracking-wider">{record.sellerCnic || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-semibold block text-[11px]">Phone Number:</span>
+                  <span className="font-mono font-bold text-slate-900">{record.sellerPhone || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-semibold block text-[11px]">Address:</span>
+                  <span className="font-medium text-slate-900">{record.sellerAddress || 'Haripur'}</span>
+                </div>
               </div>
-              <div>
-                <span className="text-slate-500 font-semibold block">CNIC No:</span>
-                <span className="font-mono font-bold text-sm text-slate-900 tracking-wider">{record.sellerCnic || 'N/A'}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 font-semibold block">Mobile / Phone No:</span>
-                <span className="font-mono font-bold text-slate-900">{record.sellerPhone || 'N/A'}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 font-semibold block">Address:</span>
-                <span className="font-medium text-slate-900">{record.sellerAddress || 'Haripur'}</span>
+
+              {/* Photos Column (Seller & CNIC Photos) */}
+              <div className="flex sm:flex-col gap-2 justify-center items-center">
+                {record.sellerPhoto && (
+                  <div className="text-center">
+                    <span className="block text-[9px] font-bold text-slate-600 mb-0.5">Seller Photo</span>
+                    <img 
+                      src={record.sellerPhoto} 
+                      alt="Seller" 
+                      className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-xl border border-slate-300 shadow-sm"
+                    />
+                  </div>
+                )}
+                {record.cnicFrontPhoto && (
+                  <div className="text-center">
+                    <span className="block text-[9px] font-bold text-slate-600 mb-0.5">CNIC Front</span>
+                    <img 
+                      src={record.cnicFrontPhoto} 
+                      alt="CNIC Front" 
+                      className="w-20 h-12 sm:w-24 sm:h-14 object-cover rounded-lg border border-slate-300 shadow-sm"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Mobile Phone Specifications */}
-          <div className="border border-slate-300 rounded-xl p-3.5 space-y-2.5 bg-white print:border-black">
+          {/* Mobile Phone Specifications & Mobile Photo */}
+          <div className="border border-slate-300 rounded-2xl p-4 space-y-3 bg-white print:border-black">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2 text-xs font-black text-slate-800 uppercase">
               <div className="flex items-center gap-2">
                 <Smartphone className="w-4 h-4 text-emerald-600 print:text-black" />
-                <span>MOBILE SPECIFICATIONS</span>
+                <span>MOBILE SPECIFICATIONS & CONDITION</span>
               </div>
-              <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${
+              <span className={`px-2.5 py-0.5 rounded text-[10px] font-black uppercase border ${
                 record.condition === 'NEW' 
                   ? 'bg-emerald-100 text-emerald-800 border-emerald-300 print:bg-white print:text-black' 
                   : 'bg-amber-100 text-amber-800 border-amber-300 print:bg-white print:text-black'
@@ -156,27 +183,40 @@ export const SimplePurchaseReceiptModal: React.FC<SimplePurchaseReceiptModalProp
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div>
-                <span className="text-slate-500 font-semibold block">Brand & Model:</span>
-                <span className="font-extrabold text-slate-900 text-sm">{record.mobileBrandModel}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 font-semibold block">Color / RAM & Storage:</span>
-                <span className="font-bold text-slate-900">{record.color || 'N/A'} {record.ramStorage ? `(${record.ramStorage})` : ''}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 font-semibold block">IMEI No 1:</span>
-                <span className="font-mono font-extrabold text-slate-900 text-xs bg-slate-100 px-2 py-0.5 rounded inline-block print:bg-white print:p-0">
-                  {record.imei1}
-                </span>
-              </div>
-              {record.imei2 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+              <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-slate-500 font-semibold block">IMEI No 2:</span>
+                  <span className="text-slate-500 font-semibold block text-[11px]">Brand & Model:</span>
+                  <span className="font-extrabold text-slate-900 text-sm">{record.mobileBrandModel}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-semibold block text-[11px]">Color & RAM/Storage:</span>
+                  <span className="font-bold text-slate-900">{record.color || 'N/A'} {record.ramStorage ? `(${record.ramStorage})` : ''}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-semibold block text-[11px]">IMEI No 1:</span>
                   <span className="font-mono font-extrabold text-slate-900 text-xs bg-slate-100 px-2 py-0.5 rounded inline-block print:bg-white print:p-0">
-                    {record.imei2}
+                    {record.imei1}
                   </span>
+                </div>
+                {record.imei2 && (
+                  <div>
+                    <span className="text-slate-500 font-semibold block text-[11px]">IMEI No 2:</span>
+                    <span className="font-mono font-extrabold text-slate-900 text-xs bg-slate-100 px-2 py-0.5 rounded inline-block print:bg-white print:p-0">
+                      {record.imei2}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {record.mobilePhoto && (
+                <div className="text-center">
+                  <span className="block text-[9px] font-bold text-slate-600 mb-0.5">Mobile Picture</span>
+                  <img 
+                    src={record.mobilePhoto} 
+                    alt="Mobile" 
+                    className="w-20 h-20 object-cover rounded-xl border border-slate-300 shadow-sm mx-auto"
+                  />
                 </div>
               )}
             </div>
@@ -210,9 +250,9 @@ export const SimplePurchaseReceiptModal: React.FC<SimplePurchaseReceiptModalProp
           </div>
 
           {/* Price Summary */}
-          <div className="flex items-center justify-between bg-emerald-600 text-white p-4 rounded-xl shadow-sm print:bg-white print:text-black print:border-2 print:border-black">
+          <div className="flex items-center justify-between bg-emerald-600 text-white p-4 rounded-2xl shadow-sm print:bg-white print:text-black print:border-2 print:border-black">
             <div>
-              <span className="text-xs font-medium text-emerald-100 block print:text-slate-700">TOTAL PURCHASE PRICE</span>
+              <span className="text-xs font-medium text-emerald-100 block print:text-slate-700">TOTAL PURCHASE PRICE PAID</span>
               <span className="text-xs font-bold text-emerald-200 print:text-black">Payment Method: {record.paymentMethod}</span>
             </div>
             <div className="text-right">
@@ -224,24 +264,24 @@ export const SimplePurchaseReceiptModal: React.FC<SimplePurchaseReceiptModalProp
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] leading-relaxed text-amber-950 font-medium print:bg-white print:border-slate-400 print:text-black">
             <div className="flex items-center gap-1.5 font-bold text-amber-900 mb-1 print:text-black">
               <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 print:text-black" />
-              <span>LEGAL SELLER DECLARATION:</span>
+              <span>LEGAL SELLER DECLARATION & AFFIDAVIT:</span>
             </div>
             <p className="text-justify">
-              I hereby declare and affirm that the mobile phone specified above is my lawful personal property, free from any encumbrance or unlawful possession. I am selling this device to the shop with full consent. In case of any legal defect or dispute regarding ownership, I shall be solely responsible.
+              I hereby declare and affirm that the mobile phone specified above is my lawful personal property, free from any encumbrance, theft, or unlawful possession. I am selling this device to the shop with full consent. In case of any legal defect, police inquiry, or ownership dispute, I shall be solely responsible.
             </p>
           </div>
 
           {/* Signatures & Stamp Block */}
-          <div className="pt-6 grid grid-cols-2 gap-8 text-center text-xs font-bold border-t border-slate-300 print:pt-8 print:border-black">
-            <div className="space-y-8">
+          <div className="pt-6 grid grid-cols-2 gap-8 text-center text-xs font-bold border-t border-slate-300 print:pt-6 print:border-black">
+            <div className="space-y-6">
               <p className="text-slate-600">Seller Signature & Thumb Impression:</p>
-              <div className="border-b-2 border-slate-400 w-3/4 mx-auto pt-4 print:border-black" />
+              <div className="border-b-2 border-slate-400 w-3/4 mx-auto pt-6 print:border-black" />
               <p className="text-slate-800 font-extrabold">{record.sellerName}</p>
             </div>
             
-            <div className="space-y-8">
+            <div className="space-y-6">
               <p className="text-slate-600">Shop Owner Signature & Stamp:</p>
-              <div className="border-b-2 border-slate-400 w-3/4 mx-auto pt-4 print:border-black" />
+              <div className="border-b-2 border-slate-400 w-3/4 mx-auto pt-6 print:border-black" />
               <p className="text-slate-800 font-extrabold">{settings.ownerName || 'Shop Owner'}</p>
             </div>
           </div>

@@ -28,7 +28,7 @@ import { AppSettings } from '../types';
 import { CashCalculatorModal } from './CashCalculatorModal';
 import { t } from '../lib/i18n';
 
-export type NavTab = 'dashboard' | 'pos' | 'inventory' | 'purchases' | 'suppliers' | 'stock-ledger' | 'ledger' | 'reports' | 'customers' | 'barcodes' | 'settings' | 'filemanager';
+export type NavTab = 'dashboard' | 'pos' | 'inventory' | 'purchases' | 'suppliers' | 'stock-ledger' | 'ledger' | 'reports' | 'customers' | 'barcodes' | 'settings' | 'filemanager' | 'sales';
 
 interface NavbarProps {
   activeTab: NavTab;
@@ -66,6 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const menuItems: { id: NavTab; title: string; icon: any }[] = [
     { id: 'dashboard', title: 'Dashboard', icon: LayoutDashboard },
     { id: 'pos', title: 'Sell Products / POS', icon: ShoppingCart },
+    { id: 'sales', title: 'Sales & Profit Ledger', icon: ShoppingCart },
     { id: 'purchases', title: 'Mobile Buy / Purchase Register', icon: Smartphone },
     { id: 'inventory', title: 'Stock Inventory', icon: Package },
     { id: 'filemanager', title: 'Photo File Manager & Vault', icon: Folder },

@@ -55,6 +55,7 @@ import { CustomerLedger } from './components/CustomerLedger';
 import { SettingsView } from './components/SettingsView';
 import { BarcodeStudioView } from './components/BarcodeStudioView';
 import { FileManagerView } from './components/FileManagerView';
+import { SalesHistoryView } from './components/SalesHistoryView';
 import { TransactionModal } from './components/TransactionModal';
 import { ExpenseModal } from './components/ExpenseModal';
 import { OpeningBalanceModal } from './components/OpeningBalanceModal';
@@ -650,6 +651,13 @@ export default function App() {
               <FileManagerView
                 purchases={mobilePurchases}
                 products={products}
+                settings={settings}
+              />
+            )}
+
+            {activeTab === 'sales' && (
+              <SalesHistoryView
+                productSales={productSales}
                 settings={settings}
               />
             )}
