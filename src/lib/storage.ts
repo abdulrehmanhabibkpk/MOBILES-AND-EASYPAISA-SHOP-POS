@@ -499,7 +499,11 @@ export const getStoredMobilePurchases = (): MobilePurchaseRecord[] => {
 };
 
 export const saveMobilePurchases = (records: MobilePurchaseRecord[]): void => {
-  localStorage.setItem(MOBILE_PURCHASES_KEY, JSON.stringify(records));
+  try {
+    localStorage.setItem(MOBILE_PURCHASES_KEY, JSON.stringify(records));
+  } catch (err) {
+    console.error("Storage quota exceeded", err);
+  }
 };
 
 export const SUPPLIERS_KEY = 'balal_mobiles_suppliers';
