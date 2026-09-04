@@ -54,6 +54,7 @@ import { ReportsView } from './components/ReportsView';
 import { CustomerLedger } from './components/CustomerLedger';
 import { SettingsView } from './components/SettingsView';
 import { BarcodeStudioView } from './components/BarcodeStudioView';
+import { FileManagerView } from './components/FileManagerView';
 import { TransactionModal } from './components/TransactionModal';
 import { ExpenseModal } from './components/ExpenseModal';
 import { OpeningBalanceModal } from './components/OpeningBalanceModal';
@@ -538,7 +539,7 @@ export default function App() {
             onLogout={handleLogout}
           />
 
-          <main className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 py-3 sm:py-6 pb-20 md:pb-6">
+          <main className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 py-3 sm:py-6 pb-20 md:pb-6 md:pl-20">
             {activeTab === 'dashboard' && (
               <Dashboard
                 transactions={transactions}
@@ -640,6 +641,14 @@ export default function App() {
 
             {activeTab === 'barcodes' && (
               <BarcodeStudioView
+                products={products}
+                settings={settings}
+              />
+            )}
+
+            {activeTab === 'filemanager' && (
+              <FileManagerView
+                purchases={mobilePurchases}
                 products={products}
                 settings={settings}
               />

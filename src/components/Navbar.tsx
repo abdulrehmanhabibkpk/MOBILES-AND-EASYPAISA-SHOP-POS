@@ -21,13 +21,14 @@ import {
   LogOut,
   QrCode,
   Calendar,
-  Wallet
+  Wallet,
+  Folder
 } from 'lucide-react';
 import { AppSettings } from '../types';
 import { CashCalculatorModal } from './CashCalculatorModal';
 import { t } from '../lib/i18n';
 
-export type NavTab = 'dashboard' | 'pos' | 'inventory' | 'purchases' | 'suppliers' | 'stock-ledger' | 'ledger' | 'reports' | 'customers' | 'barcodes' | 'settings';
+export type NavTab = 'dashboard' | 'pos' | 'inventory' | 'purchases' | 'suppliers' | 'stock-ledger' | 'ledger' | 'reports' | 'customers' | 'barcodes' | 'settings' | 'filemanager';
 
 interface NavbarProps {
   activeTab: NavTab;
@@ -67,6 +68,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'pos', title: 'Sell Products / POS', icon: ShoppingCart },
     { id: 'purchases', title: 'Mobile Buy / Purchase Register', icon: Smartphone },
     { id: 'inventory', title: 'Stock Inventory', icon: Package },
+    { id: 'filemanager', title: 'Photo File Manager & Vault', icon: Folder },
     { id: 'suppliers', title: 'Supplier Directory & Khata', icon: Users },
     { id: 'stock-ledger', title: 'Mobile & Inventory Ledger', icon: BookOpen },
     { id: 'barcodes', title: 'Barcode Studio & Printing', icon: QrCode },
@@ -351,83 +353,135 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       )}
 
-      {/* Native Mobile Bottom Navigation Bar in Light Emerald Theme */}
-      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-40 border-t shadow-2xl transition-colors duration-200 print:hidden ${
-        isLight ? 'bg-white border-neutral-200 text-neutral-800' : 'bg-black border-neutral-900 text-neutral-100'
-      }`}>
-        <div className="grid grid-cols-5 h-14 items-center justify-between px-1">
-          {/* 1. Dashboard */}
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'dashboard'
-                ? 'text-emerald-600 font-extrabold'
-                : 'text-neutral-500 hover:text-neutral-800'
-            }`}
-          >
-            <div className={`p-1 rounded-xl transition-colors ${activeTab === 'dashboard' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' : ''}`}>
-              <LayoutDashboard className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] mt-0.5 leading-none">{settings.language === 'en' ? 'Dashboard' : 'ڈیش بورڈ'}</span>
-          </button>
+      {/* Native Navigation Bar: Bottom on Mobile, Left Sidebar on Desktop (Hides when Menu is Open) */}
+      {!isDrawerOpen && (
+        <>
+          {/* Mobile Bottom Bar */}
+          <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-40 border-t shadow-2xl transition-colors duration-200 print:hidden ${
+            isLight ? 'bg-white border-neutral-200 text-neutral-800' : 'bg-black border-neutral-900 text-neutral-100'
+          }`}>
+            <div className="grid grid-cols-5 h-14 items-center justify-between px-1">
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
+                  activeTab === 'dashboard' ? 'text-emerald-600 font-extrabold' : 'text-neutral-500 hover:text-neutral-800'
+                }`}
+              >
+                <div className={`p-1 rounded-xl transition-colors ${activeTab === 'dashboard' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' : ''}`}>
+                  <LayoutDashboard className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] mt-0.5 leading-none">{settings.language === 'en' ? 'Dashboard' : 'ڈیش بورڈ'}</span>
+              </button>
 
-          {/* 2. POS Sale */}
-          <button
-            onClick={() => setActiveTab('pos')}
-            className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'pos'
-                ? 'text-emerald-600 font-extrabold'
-                : 'text-neutral-500 hover:text-neutral-800'
-            }`}
-          >
-            <div className={`p-1 rounded-xl transition-colors ${activeTab === 'pos' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' : ''}`}>
-              <ShoppingCart className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] mt-0.5 leading-none">{settings.language === 'en' ? 'POS' : 'فروخت بل'}</span>
-          </button>
+              <button
+                onClick={() => setActiveTab('pos')}
+                className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
+                  activeTab === 'pos' ? 'text-emerald-600 font-extrabold' : 'text-neutral-500 hover:text-neutral-800'
+                }`}
+              >
+                <div className={`p-1 rounded-xl transition-colors ${activeTab === 'pos' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' : ''}`}>
+                  <ShoppingCart className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] mt-0.5 leading-none">{settings.language === 'en' ? 'POS' : 'فروخت بل'}</span>
+              </button>
 
-          {/* 3. EasyPaisa Ledger */}
-          <button
-            onClick={() => setActiveTab('ledger')}
-            className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'ledger'
-                ? 'text-emerald-600 font-extrabold'
-                : 'text-neutral-500 hover:text-neutral-800'
-            }`}
-          >
-            <div className={`p-1 rounded-xl transition-colors ${activeTab === 'ledger' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' : ''}`}>
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] mt-0.5 leading-none">{settings.language === 'en' ? 'Ledger' : 'ایزی پیسہ'}</span>
-          </button>
+              <button
+                onClick={() => setActiveTab('inventory')}
+                className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
+                  activeTab === 'inventory' ? 'text-emerald-600 font-extrabold' : 'text-neutral-500 hover:text-neutral-800'
+                }`}
+              >
+                <div className={`p-1 rounded-xl transition-colors ${activeTab === 'inventory' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' : ''}`}>
+                  <Package className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] mt-0.5 leading-none">{settings.language === 'en' ? 'Stock' : 'اسٹاک'}</span>
+              </button>
 
-          {/* 4. Inventory Stock */}
-          <button
-            onClick={() => setActiveTab('inventory')}
-            className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'inventory'
-                ? 'text-emerald-600 font-extrabold'
-                : 'text-neutral-500 hover:text-neutral-800'
-            }`}
-          >
-            <div className={`p-1 rounded-xl transition-colors ${activeTab === 'inventory' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' : ''}`}>
-              <Package className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] mt-0.5 leading-none">{settings.language === 'en' ? 'Stock' : 'اسٹاک'}</span>
-          </button>
+              <button
+                onClick={() => setActiveTab('filemanager')}
+                className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer ${
+                  activeTab === 'filemanager' ? 'text-emerald-600 font-extrabold' : 'text-neutral-500 hover:text-neutral-800'
+                }`}
+              >
+                <div className={`p-1 rounded-xl transition-colors ${activeTab === 'filemanager' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' : ''}`}>
+                  <Folder className="w-5 h-5 text-emerald-600" />
+                </div>
+                <span className="text-[10px] mt-0.5 leading-none font-bold text-emerald-600">{settings.language === 'en' ? 'Files' : 'فائلز'}</span>
+              </button>
 
-          {/* 5. Menu Drawer Toggle */}
-          <button
-            onClick={() => setIsDrawerOpen(true)}
-            className="flex flex-col items-center justify-center py-1 rounded-xl text-neutral-500 hover:text-neutral-800 transition-all cursor-pointer"
-          >
-            <div className="p-1 rounded-xl">
-              <Menu className="w-5 h-5 text-emerald-600" />
+              <button
+                onClick={() => setIsDrawerOpen(true)}
+                className="flex flex-col items-center justify-center py-1 rounded-xl text-neutral-500 hover:text-neutral-800 transition-all cursor-pointer"
+              >
+                <div className="p-1 rounded-xl">
+                  <Menu className="w-5 h-5 text-emerald-600" />
+                </div>
+                <span className="text-[10px] mt-0.5 leading-none font-bold text-emerald-600">{settings.language === 'en' ? 'Menu' : 'مینو'}</span>
+              </button>
             </div>
-            <span className="text-[10px] mt-0.5 leading-none font-bold text-emerald-600">{settings.language === 'en' ? 'Menu' : 'مینو'}</span>
-          </button>
-        </div>
-      </nav>
+          </nav>
+
+          {/* Desktop Left Sidebar */}
+          <aside className={`hidden md:flex flex-col fixed left-0 top-16 bottom-0 w-20 z-30 border-r shadow-lg transition-colors duration-200 print:hidden ${
+            isLight ? 'bg-white border-neutral-200 text-neutral-800' : 'bg-black border-neutral-900 text-neutral-100'
+          }`}>
+            <div className="flex flex-col items-center py-4 space-y-3 flex-1">
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`flex flex-col items-center justify-center p-2 rounded-2xl w-16 transition-all cursor-pointer ${
+                  activeTab === 'dashboard' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-extrabold shadow-sm' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                }`}
+                title="Dashboard"
+              >
+                <LayoutDashboard className="w-6 h-6 mb-1" />
+                <span className="text-[10px] leading-tight text-center truncate w-full">Dashboard</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('pos')}
+                className={`flex flex-col items-center justify-center p-2 rounded-2xl w-16 transition-all cursor-pointer ${
+                  activeTab === 'pos' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-extrabold shadow-sm' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                }`}
+                title="POS Sale"
+              >
+                <ShoppingCart className="w-6 h-6 mb-1" />
+                <span className="text-[10px] leading-tight text-center truncate w-full">POS</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('inventory')}
+                className={`flex flex-col items-center justify-center p-2 rounded-2xl w-16 transition-all cursor-pointer ${
+                  activeTab === 'inventory' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-extrabold shadow-sm' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                }`}
+                title="Stock Inventory"
+              >
+                <Package className="w-6 h-6 mb-1" />
+                <span className="text-[10px] leading-tight text-center truncate w-full">Stock</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('filemanager')}
+                className={`flex flex-col items-center justify-center p-2 rounded-2xl w-16 transition-all cursor-pointer ${
+                  activeTab === 'filemanager' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-extrabold shadow-sm' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                }`}
+                title="Photo File Manager & Vault"
+              >
+                <Folder className="w-6 h-6 mb-1 text-emerald-600" />
+                <span className="text-[10px] leading-tight text-center truncate w-full font-bold">Files</span>
+              </button>
+
+              <button
+                onClick={() => setIsDrawerOpen(true)}
+                className="flex flex-col items-center justify-center p-2 rounded-2xl w-16 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer mt-auto mb-4"
+                title="Menu Drawer"
+              >
+                <Menu className="w-6 h-6 mb-1 text-emerald-600" />
+                <span className="text-[10px] leading-tight font-bold text-emerald-600 text-center truncate w-full">Menu</span>
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
 
       {/* Cash Calculator Modal */}
       <CashCalculatorModal
