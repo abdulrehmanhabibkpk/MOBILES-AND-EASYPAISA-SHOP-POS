@@ -12,41 +12,53 @@
   }
 }
 
-/* THERMAL PRINTER (80mm / 58mm POS PAPER) OPTIMIZED MEDIA PRINT STYLES */
+/* PRINT STYLES: OPTIMIZED FOR BOTH A4 / FULL DOCUMENT & THERMAL 80mm RECEIPT */
 @media print {
   @page {
-    size: 80mm auto;
-    margin: 0mm;
+    size: auto;
+    margin: 6mm;
   }
 
-  html, body {
-    width: 80mm !important;
-    max-width: 80mm !important;
-    margin: 0 auto !important;
-    padding: 0 !important;
-    background: #ffffff !important;
-    color: #000000 !important;
-    font-family: 'Courier New', Courier, monospace, system-ui, -apple-system, sans-serif !important;
-    font-size: 11px !important;
-    line-height: 1.2 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Hide app background overlays, headers, footers, action buttons during thermal print */
+  /* Hide app navigation, header, footer, background buttons during printing */
   header, footer, nav, button, .print\:hidden {
     display: none !important;
   }
 
-  /* Force modal containers to take full 80mm width without margin or backdrop */
-  .fixed {
-    position: relative !important;
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* When printing thermal receipts specifically */
+  body.thermal-print-mode {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    font-family: 'Courier New', Courier, monospace, system-ui, -apple-system, sans-serif !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Standard document & A4 Deed printing */
+  body.document-print-mode {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  body.document-print-mode .fixed {
+    position: static !important;
     top: 0 !important;
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    width: 80mm !important;
-    max-width: 80mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
@@ -54,34 +66,27 @@
     overflow: visible !important;
   }
 
-  .max-w-md, .max-w-xl, .max-w-2xl, .max-w-7xl {
-    max-width: 80mm !important;
-    width: 80mm !important;
-    margin: 0 !important;
-    padding: 0 !important;
+  body.document-print-mode .print-full-width {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
     border: none !important;
-    box-shadow: none !important;
     border-radius: 0 !important;
+    margin: 0 !important;
   }
 
-  /* Ensure text & lines print in crisp thermal black */
-  *, *:before, *:after {
-    color: #000000 !important;
-    text-shadow: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
+  /* Page break utilities */
+  .page-break-after-always {
+    page-break-after: always !important;
+    break-after: page !important;
   }
 
-  .print\:border-black {
-    border-color: #000000 !important;
+  .avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
-  .print\:bg-black {
-    background-color: #000000 !important;
-    color: #ffffff !important;
-  }
-
-  /* High contrast table styling for thermal receipts */
+  /* High contrast table styling for receipts */
   table {
     width: 100% !important;
     border-collapse: collapse !important;

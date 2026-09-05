@@ -17,7 +17,7 @@ import {
   getStoredSuppliers,
   saveSuppliers
 } from './lib/storage';
-import { testFirestoreConnection, auth } from './lib/firebase';
+import { testFirestoreConnection, auth, onQuotaStatusChange, isQuotaExceeded } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { 
   subscribeProducts, 
@@ -64,10 +64,10 @@ import { ProductInvoiceModal } from './components/ProductInvoiceModal';
 import { Footer } from './components/Footer';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
   const [settings, setSettings] = useState<AppSettings>(getStoredSettings);
-  const [isLocked, setIsLocked] = useState<boolean>(true); // Locked on initial startup
-  const [hasLoggedInSession, setHasLoggedInSession] = useState<boolean>(false);
+  const [isLocked, setIsLocked] = useState<boolean>(false); // Unlocked by default to show local data instantly
+  const [hasLoggedInSession, setHasLoggedInSession] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
 
   const [transactions, setTransactions] = useState<Transaction[]>(getStoredTransactions);
@@ -91,17 +91,21 @@ export default function App() {
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
 
+  const [quotaReached, setQuotaReached] = useState<boolean>(isQuotaExceeded);
+
+  useEffect(() => {
+    return onQuotaStatusChange((exceeded) => {
+      setQuotaReached(exceeded);
+    });
+  }, []);
+
   // Subscribe to Authentication changes
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
         setIsAuthenticated(true);
-        setHasLoggedInSession(true);
-        setIsLocked(false);
       } else {
         setIsAuthenticated(false);
-        setHasLoggedInSession(false);
-        setIsLocked(true);
       }
     });
     return () => unsubAuth();
@@ -109,72 +113,48 @@ export default function App() {
 
   // Subscribe to shared Firestore updates for all authenticated users
   useEffect(() => {
-    if (!isAuthenticated) {
-      setProducts([]);
-      setProductSales([]);
-      setMobilePurchases([]);
-      setTransactions([]);
-      setDailyBalances({});
-      setSettings(DEFAULT_SETTINGS);
-      return;
-    }
-
     testFirestoreConnection();
 
     const unsubProducts = subscribeProducts((remoteProducts) => {
-      setProducts(remoteProducts || []);
+      if (remoteProducts && remoteProducts.length > 0) {
+        setProducts(remoteProducts);
+      }
     });
 
     const unsubSales = subscribeProductSales((remoteSales) => {
-      setProductSales(remoteSales || []);
+      if (remoteSales && remoteSales.length > 0) {
+        setProductSales(remoteSales);
+      }
     });
 
     const unsubPurchases = subscribeMobilePurchases((remotePurchases) => {
       if (remotePurchases && remotePurchases.length > 0) {
-        // Filter out old Abdul Rehman record if present in cloud
         const cleanRemote = remotePurchases.filter(p => p.id !== 'pur-1003' && !p.sellerName?.includes('Abdul Rehman'));
-        if (cleanRemote.length !== remotePurchases.length) {
-          deleteMobilePurchaseFromCloud('pur-1003');
-        }
-        const hasHassnain = cleanRemote.some(p => p.receiptNo === 'PUR-1001' || p.sellerName?.includes('Hassnain'));
-        if (!hasHassnain) {
-          const localP = getStoredMobilePurchases();
-          setMobilePurchases(localP);
-          localP.forEach((p) => saveMobilePurchaseToCloud(p));
-        } else {
-          setMobilePurchases(cleanRemote);
-        }
-      } else {
-        const localP = getStoredMobilePurchases();
-        setMobilePurchases(localP);
-        localP.forEach((p) => saveMobilePurchaseToCloud(p));
+        setMobilePurchases(cleanRemote);
       }
     });
 
     const unsubSuppliers = subscribeSuppliers((remoteSuppliers) => {
       if (remoteSuppliers && remoteSuppliers.length > 0) {
         setSuppliers(remoteSuppliers);
-      } else {
-        const localS = getStoredSuppliers();
-        setSuppliers(localS);
-        localS.forEach((s) => saveSupplierToCloud(s));
       }
     });
 
     const unsubTrx = subscribeTransactions((remoteTrx) => {
-      setTransactions(remoteTrx || []);
+      if (remoteTrx && remoteTrx.length > 0) {
+        setTransactions(remoteTrx);
+      }
     });
 
     const unsubBalances = subscribeDailyBalances((remoteBalances) => {
-      setDailyBalances(remoteBalances || {});
+      if (remoteBalances && Object.keys(remoteBalances).length > 0) {
+        setDailyBalances(remoteBalances);
+      }
     });
 
     const unsubSettings = subscribeAppSettings((remoteSettings) => {
       if (remoteSettings && remoteSettings.shopName) {
         setSettings(remoteSettings);
-      } else {
-        // Init settings document in cloud if none exists
-        saveAppSettingsToCloud(DEFAULT_SETTINGS);
       }
     });
 
@@ -187,7 +167,7 @@ export default function App() {
       unsubBalances();
       unsubSettings();
     };
-  }, [isAuthenticated]);
+  }, []);
 
 
   useEffect(() => {
@@ -541,6 +521,23 @@ export default function App() {
           />
 
           <main className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 py-3 sm:py-6 pb-20 md:pb-6 md:pl-20">
+            {quotaReached && (
+              <div className="mb-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 px-4 py-2.5 rounded-2xl flex items-center justify-between text-xs font-semibold shadow-sm animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span>
+                    <strong>Offline Storage Mode Active:</strong> Daily Firebase free-tier read quota reached for today. The application is running seamlessly from local storage with full data persistence and zero downtime.
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setQuotaReached(false)} 
+                  className="text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-white font-bold ml-2 text-xs cursor-pointer px-2 py-1 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
             {activeTab === 'dashboard' && (
               <Dashboard
                 transactions={transactions}

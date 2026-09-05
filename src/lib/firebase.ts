@@ -51,11 +51,24 @@ export async function sendPasswordResetEmail(email: string) {
   }
 }
 
+export let isQuotaExceeded = false;
+const quotaListeners: Array<(exceeded: boolean) => void> = [];
+
+export function onQuotaStatusChange(cb: (exceeded: boolean) => void) {
+  quotaListeners.push(cb);
+  return () => {
+    const idx = quotaListeners.indexOf(cb);
+    if (idx !== -1) quotaListeners.splice(idx, 1);
+  };
+}
+
 export async function loginAnonymously() {
   try {
     return await signInAnonymously(auth);
-  } catch (error) {
-    console.error('Anonymous Sign-In Error:', error);
+  } catch (error: any) {
+    if (error?.code !== 'auth/admin-restricted-operation') {
+      console.error('Anonymous Sign-In Error:', error);
+    }
     throw error;
   }
 }
@@ -117,8 +130,20 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMsg = error instanceof Error ? error.message : String(error);
+  const isQuota = errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource-exhausted');
+
+  if (isQuota) {
+    if (!isQuotaExceeded) {
+      isQuotaExceeded = true;
+      quotaListeners.forEach(fn => fn(true));
+      console.warn(`[Firestore Quota] Free daily quota exceeded on path '${path}'. Switching seamlessly to offline local storage.`);
+    }
+    return;
+  }
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMsg,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -138,11 +163,20 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 }
 
 export async function testFirestoreConnection() {
+  if (isQuotaExceeded) return;
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
+  } catch (error: any) {
+    const errMsg = error?.message || String(error);
+    if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource-exhausted')) {
+      if (!isQuotaExceeded) {
+        isQuotaExceeded = true;
+        quotaListeners.forEach(fn => fn(true));
+      }
+      return;
+    }
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error('Please check your Firebase configuration.');
+      console.warn('Firebase client is offline.');
     }
   }
 }
