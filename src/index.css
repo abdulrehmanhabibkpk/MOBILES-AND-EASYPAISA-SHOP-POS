@@ -19,10 +19,12 @@
     margin: 8mm;
   }
 
-  /* When printing any receipt modal, HIDE the entire background app (#root) */
+  /* When printing any receipt modal or barcode studio, HIDE the entire background app (#root) */
   body.document-print-mode #root,
   body.thermal-print-mode #root,
+  body.barcode-print-mode #root,
   body:has(#simple-purchase-receipt-portal) #root,
+  body:has(#barcode-print-portal) #root,
   body:has(.receipt-portal-root) #root {
     display: none !important;
   }
@@ -61,8 +63,9 @@
     background: #ffffff !important;
   }
 
-  /* Clean isolation for the portal receipt */
+  /* Clean isolation for the portal receipt and barcode labels */
   #simple-purchase-receipt-portal,
+  #barcode-print-portal,
   .receipt-portal-root {
     position: static !important;
     inset: auto !important;
