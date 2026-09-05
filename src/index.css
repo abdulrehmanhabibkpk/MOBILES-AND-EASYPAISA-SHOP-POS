@@ -12,6 +12,26 @@
   }
 }
 
+#barcode-print-portal {
+  display: none;
+}
+
+@media print {
+  #barcode-print-portal {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    z-index: 999999 !important;
+  }
+}
+
 /* PRINT STYLES: OPTIMIZED FOR BOTH A4 / FULL DOCUMENT & THERMAL 80mm RECEIPT */
 @media print {
   @page {
