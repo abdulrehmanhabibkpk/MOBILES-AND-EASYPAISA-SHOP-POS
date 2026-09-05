@@ -118,18 +118,23 @@ export const SimplePurchaseReceiptModal: React.FC<SimplePurchaseReceiptModalProp
         {/* Shop Header */}
         <div className="text-center space-y-1 pt-1">
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 uppercase">
-            {settings.shopName || 'Mobiles & EasyPaisa Shop'}
+            {settings.shopName || 'Mobile Buy & Purchase'}
           </h1>
           <div className="flex flex-wrap justify-center items-center gap-x-3 text-xs font-semibold text-slate-700">
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-slate-500 print:text-black" />
-              {settings.address || 'Near Sadeeq e Akbar Masjid GT Road Sarai Saleh'}
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1">
-              <Phone className="w-3.5 h-3.5 text-slate-500 print:text-black" />
-              {settings.ownerName || 'Umer Ali'} ({settings.phone || '0331-9348330'})
-            </span>
+            {settings.address && (
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-slate-500 print:text-black" />
+                {settings.address}
+              </span>
+            )}
+            {settings.address && (settings.ownerName || settings.phone) && <span>•</span>}
+            {(settings.ownerName || settings.phone) && (
+              <span className="flex items-center gap-1">
+                <Phone className="w-3.5 h-3.5 text-slate-500 print:text-black" />
+                {settings.ownerName ? `${settings.ownerName} ` : ''}
+                {settings.phone ? `(${settings.phone})` : ''}
+              </span>
+            )}
           </div>
         </div>
 

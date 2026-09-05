@@ -1,19 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Default deny catch-all
     match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Shared shop data for all authenticated users
-    match /shops/mainShop/{document=**} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
   }
 }

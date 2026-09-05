@@ -46,7 +46,12 @@ export const ReceiptVoucherModal: React.FC<ReceiptVoucherModalProps> = ({
       ? `SELL (Cash In / ${channel.nameEn} Out)` 
       : 'EXPENSE';
 
-    const msg = `📲 *${channel.emoji} ${channel.nameEn} ٹرانزیکشن رسید (${channel.nameEn} Receipt)*\n*${settings.shopName || 'Mobiles and EasyPaisa Shop POS'}*\n📍 ${settings.address || 'Near Sadeeq e Akbar Masjid GT Road Sarai Saleh'}\n📞 Contact: Umer Ali (${settings.phone || '03319348330'})\n-------------------------\n*Voucher ID:* ${transaction.id}\n*Channel:* ${channel.nameEn}\n*TRX ID:* ${transaction.trxId || '-'}\n*Date:* ${transaction.date} ${transaction.time}\n*Customer:* ${transaction.customerName || 'Walk-in Customer'}\n*Type:* ${typeTitle}\n-------------------------\n*${channel.nameEn} Amount:* Rs. ${transaction.easyPaisaAmount.toLocaleString()}\n*Cash Amount:* Rs. ${transaction.cashAmount.toLocaleString()}\n*Fee Profit:* Rs. ${transaction.feeProfit.toLocaleString()}\n-------------------------\nProtected Security System`;
+    const contactLine = [
+      settings.ownerName ? `📞 Contact: ${settings.ownerName}` : '',
+      settings.phone ? `(${settings.phone})` : '',
+    ].filter(Boolean).join(' ');
+
+    const msg = `📲 *${channel.emoji} ${channel.nameEn} ٹرانزیکشن رسید (${channel.nameEn} Receipt)*\n*${settings.shopName || 'Mobile Shop & EasyPaisa'}*${settings.address ? `\n📍 ${settings.address}` : ''}${contactLine ? `\n${contactLine}` : ''}\n-------------------------\n*Voucher ID:* ${transaction.id}\n*Channel:* ${channel.nameEn}\n*TRX ID:* ${transaction.trxId || '-'}\n*Date:* ${transaction.date} ${transaction.time}\n*Customer:* ${transaction.customerName || 'Walk-in Customer'}\n*Type:* ${typeTitle}\n-------------------------\n*${channel.nameEn} Amount:* Rs. ${transaction.easyPaisaAmount.toLocaleString()}\n*Cash Amount:* Rs. ${transaction.cashAmount.toLocaleString()}\n*Fee Profit:* Rs. ${transaction.feeProfit.toLocaleString()}\n-------------------------\nProtected Security System`;
 
     const url = transaction.customerPhone 
       ? `https://wa.me/${transaction.customerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`
@@ -73,9 +78,16 @@ export const ReceiptVoucherModal: React.FC<ReceiptVoucherModalProps> = ({
           <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 mb-1.5">
             <Smartphone className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
-          <h2 className="font-bold text-base sm:text-lg leading-tight">{settings.shopName || 'Mobiles and EasyPaisa Shop POS'}</h2>
-          <p className="text-emerald-100 text-xs mt-0.5">Contact: Umer Ali ({settings.phone || '03319348330'})</p>
-          <p className="text-emerald-200 text-[10px] mt-0.5">{settings.address || 'Near Sadeeq e Akbar Masjid GT Road Sarai Saleh'}</p>
+          <h2 className="font-bold text-base sm:text-lg leading-tight">{settings.shopName || 'Mobile Shop & EasyPaisa'}</h2>
+          {(settings.ownerName || settings.phone) && (
+            <p className="text-emerald-100 text-xs mt-0.5">
+              {settings.ownerName ? `Contact: ${settings.ownerName} ` : ''}
+              {settings.phone ? `(${settings.phone})` : ''}
+            </p>
+          )}
+          {settings.address && (
+            <p className="text-emerald-200 text-[10px] mt-0.5">{settings.address}</p>
+          )}
           
           <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-950/30 text-emerald-200 text-[10px] sm:text-[11px] font-medium border border-white/20">
             <ShieldCheck className="w-3.5 h-3.5" />
@@ -85,9 +97,14 @@ export const ReceiptVoucherModal: React.FC<ReceiptVoucherModalProps> = ({
 
         {/* THERMAL PRINT RECEIPT HEADER DYNAMIC CHANNEL */}
         <div className="hidden print:block text-center font-mono py-2 border-b-2 border-black">
-          <h1 className="font-extrabold text-base uppercase tracking-tight">{settings.shopName || 'MOBILES AND EASYPAISA SHOP POS'}</h1>
-          <p className="text-xs">{settings.address || 'Near Sadeeq e Akbar Masjid GT Road Sarai Saleh'}</p>
-          <p className="text-xs font-semibold">Umer Ali: {settings.phone || '03319348330'}</p>
+          <h1 className="font-extrabold text-base uppercase tracking-tight">{settings.shopName || 'MOBILE SHOP & EASYPAISA'}</h1>
+          {settings.address && <p className="text-xs">{settings.address}</p>}
+          {(settings.ownerName || settings.phone) && (
+            <p className="text-xs font-semibold">
+              {settings.ownerName ? `${settings.ownerName}: ` : ''}
+              {settings.phone}
+            </p>
+          )}
           <p className="text-[10px] font-bold mt-1">*** {channelInfo.nameEn.toUpperCase()} RECEIPT ***</p>
           <p className="text-[9px]">Protected Passcode System</p>
         </div>

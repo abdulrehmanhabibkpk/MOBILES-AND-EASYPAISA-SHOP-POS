@@ -18,7 +18,7 @@ import {
   getStoredSuppliers,
   saveSuppliers
 } from './lib/storage';
-import { testFirestoreConnection, auth, onQuotaStatusChange, isQuotaExceeded } from './lib/firebase';
+import { testFirestoreConnection, auth } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { 
   subscribeProducts, 
@@ -63,9 +63,12 @@ import { OpeningBalanceModal } from './components/OpeningBalanceModal';
 import { ReceiptVoucherModal } from './components/ReceiptVoucherModal';
 import { ProductInvoiceModal } from './components/ProductInvoiceModal';
 import { Footer } from './components/Footer';
+import { GlobalLoadingSkeleton } from './components/GlobalLoadingSkeleton';
+import { LoadingOverlay } from './components/LoadingOverlay';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [settings, setSettings] = useState<AppSettings>(getStoredSettings);
   const [isLocked, setIsLocked] = useState<boolean>(false); // Unlocked by default to show local data instantly
   const [hasLoggedInSession, setHasLoggedInSession] = useState<boolean>(true);
@@ -92,14 +95,6 @@ export default function App() {
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
 
-  const [quotaReached, setQuotaReached] = useState<boolean>(isQuotaExceeded);
-
-  useEffect(() => {
-    return onQuotaStatusChange((exceeded) => {
-      setQuotaReached(exceeded);
-    });
-  }, []);
-
   // Subscribe to Authentication changes
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (user) => {
@@ -116,57 +111,83 @@ export default function App() {
   useEffect(() => {
     testFirestoreConnection();
 
-    const unsubProducts = subscribeProducts((remoteProducts) => {
-      if (Array.isArray(remoteProducts)) {
-        setProducts(remoteProducts);
-        saveProducts(remoteProducts);
+    let completedStreams = 0;
+    const markStreamLoaded = () => {
+      completedStreams++;
+      // Once primary streams have reported their initial snapshot/error:
+      if (completedStreams >= 3) {
+        setLoading(false);
       }
-    });
+    };
+
+    // Safety fallback: Never keep user waiting more than 1000ms if network is slow or offline
+    const fallbackTimer = setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+
+    const unsubProducts = subscribeProducts((remoteProducts) => {
+      markStreamLoaded();
+      if (Array.isArray(remoteProducts)) {
+        const real = remoteProducts.filter(p => !p.id.startsWith('prod-') && !p.name.includes('Vivo Y21') && !p.name.includes('Samsung Galaxy A14'));
+        setProducts(real);
+        saveProducts(real);
+      }
+    }, () => markStreamLoaded());
 
     const unsubSales = subscribeProductSales((remoteSales) => {
+      markStreamLoaded();
       if (Array.isArray(remoteSales)) {
-        setProductSales(remoteSales);
-        saveProductSales(remoteSales);
+        const real = remoteSales.filter(s => !s.id.startsWith('sale-') && s.invoiceNo !== 'INV-1001' && !s.customerName?.includes('Kashif Mehmood'));
+        setProductSales(real);
+        saveProductSales(real);
       }
-    });
+    }, () => markStreamLoaded());
 
     const unsubPurchases = subscribeMobilePurchases((remotePurchases) => {
+      markStreamLoaded();
       if (Array.isArray(remotePurchases)) {
-        const cleanRemote = remotePurchases.filter(p => p.id !== 'pur-1003' && !p.sellerName?.includes('Abdul Rehman'));
-        setMobilePurchases(cleanRemote);
-        saveMobilePurchases(cleanRemote);
+        const real = remotePurchases.filter(p => p.id !== 'pur-1001' && p.id !== 'pur-1002' && p.id !== 'pur-1003' && !p.sellerName?.includes('Hassnain Jaleel') && !p.sellerName?.includes('Abdul Rehman'));
+        setMobilePurchases(real);
+        saveMobilePurchases(real);
       }
-    });
+    }, () => markStreamLoaded());
 
     const unsubSuppliers = subscribeSuppliers((remoteSuppliers) => {
+      markStreamLoaded();
       if (Array.isArray(remoteSuppliers)) {
-        setSuppliers(remoteSuppliers);
-        saveSuppliers(remoteSuppliers);
+        const real = remoteSuppliers.filter(s => s.id !== 'sup-1' && s.id !== 'sup-2' && !s.name?.includes('Al-Madina') && !s.name?.includes('Master Electronics'));
+        setSuppliers(real);
+        saveSuppliers(real);
       }
-    });
+    }, () => markStreamLoaded());
 
     const unsubTrx = subscribeTransactions((remoteTrx) => {
+      markStreamLoaded();
       if (Array.isArray(remoteTrx)) {
-        setTransactions(remoteTrx);
-        saveTransactions(remoteTrx);
+        const real = remoteTrx.filter(t => !t.id.startsWith('trx-10') && !t.customerName?.includes('Sample Customer'));
+        setTransactions(real);
+        saveTransactions(real);
       }
-    });
+    }, () => markStreamLoaded());
 
     const unsubBalances = subscribeDailyBalances((remoteBalances) => {
+      markStreamLoaded();
       if (remoteBalances && Object.keys(remoteBalances).length > 0) {
         setDailyBalances(remoteBalances);
         saveAllDailyBalances(remoteBalances);
       }
-    });
+    }, () => markStreamLoaded());
 
     const unsubSettings = subscribeAppSettings((remoteSettings) => {
+      markStreamLoaded();
       if (remoteSettings && remoteSettings.shopName) {
         setSettings(remoteSettings);
         saveSettings(remoteSettings);
       }
-    });
+    }, () => markStreamLoaded());
 
     return () => {
+      clearTimeout(fallbackTimer);
       unsubProducts();
       unsubSales();
       unsubPurchases();
@@ -266,13 +287,10 @@ export default function App() {
     setProducts(updatedProducts);
     saveProducts(updatedProducts);
     if (isAuthenticated) {
-      updatedProducts.forEach((p) => saveProductToCloud(p));
-    }
-
-    const updatedSales = [sale, ...productSales];
-    setProductSales(updatedSales);
-    saveProductSales(updatedSales);
-    if (isAuthenticated) {
+      // ONLY save the specific products that were sold, not entire inventory!
+      const soldProductIds = new Set(sale.items.map(item => item.productId));
+      const modifiedProducts = updatedProducts.filter(p => soldProductIds.has(p.id));
+      modifiedProducts.forEach((p) => saveProductToCloud(p));
       saveProductSaleToCloud(sale);
     }
 
@@ -311,15 +329,23 @@ export default function App() {
 
     const prodExists = products.some((p) => p.id === productData.id || (record.imei1 && p.imeiOrSerial === record.imei1));
     let updatedProducts: Product[];
+    let productToSave = productData;
     if (prodExists) {
-      updatedProducts = products.map((p) => (p.id === productData.id || (record.imei1 && p.imeiOrSerial === record.imei1) ? { ...p, ...productData, id: p.id } : p));
+      updatedProducts = products.map((p) => {
+        if (p.id === productData.id || (record.imei1 && p.imeiOrSerial === record.imei1)) {
+          productToSave = { ...p, ...productData, id: p.id };
+          return productToSave;
+        }
+        return p;
+      });
     } else {
       updatedProducts = [productData, ...products];
     }
     setProducts(updatedProducts);
     saveProducts(updatedProducts);
     if (isAuthenticated) {
-      updatedProducts.forEach((p) => saveProductToCloud(p));
+      // ONLY save the single added/updated mobile product
+      saveProductToCloud(productToSave);
     }
 
     // Also add purchase transaction to Ledger if new
@@ -462,10 +488,12 @@ export default function App() {
 
   const handleResetData = () => {
     localStorage.clear();
-    setTransactions(getStoredTransactions());
-    setDailyBalances(getStoredDailyBalances());
-    setProducts(getStoredProducts());
-    setProductSales(getStoredProductSales());
+    setTransactions([]);
+    setDailyBalances({});
+    setProducts([]);
+    setProductSales([]);
+    setMobilePurchases([]);
+    setSuppliers([]);
     setSettings(DEFAULT_SETTINGS);
   };
 
@@ -512,6 +540,14 @@ export default function App() {
       {/* Main App Layout */}
       {!isLocked && (
         <>
+          {loading && (
+            <LoadingOverlay
+              theme={settings.theme}
+              message="Syncing shop records with Firestore..."
+              isInitialLoading={true}
+            />
+          )}
+
           <Navbar
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -526,27 +562,18 @@ export default function App() {
             }}
             onOpenOpeningBalance={() => setIsOpeningModalOpen(true)}
             onLogout={handleLogout}
+            loading={loading}
           />
 
           <main className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 py-3 sm:py-6 pb-20 md:pb-6 md:pl-20">
-            {quotaReached && (
-              <div className="mb-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 px-4 py-2.5 rounded-2xl flex items-center justify-between text-xs font-semibold shadow-sm animate-fade-in">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                  <span>
-                    <strong>Offline Storage Mode Active:</strong> Daily Firebase free-tier read quota reached for today. The application is running seamlessly from local storage with full data persistence and zero downtime.
-                  </span>
-                </div>
-                <button 
-                  onClick={() => setQuotaReached(false)} 
-                  className="text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-white font-bold ml-2 text-xs cursor-pointer px-2 py-1 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
-                >
-                  Dismiss
-                </button>
-              </div>
-            )}
-
-            {activeTab === 'dashboard' && (
+            {loading ? (
+              <GlobalLoadingSkeleton
+                theme={settings.theme}
+                onSkip={() => setLoading(false)}
+              />
+            ) : (
+              <>
+                {activeTab === 'dashboard' && (
               <Dashboard
                 transactions={transactions}
                 dailyBalances={dailyBalances}
@@ -675,6 +702,8 @@ export default function App() {
                 onRestoreData={handleRestoreData}
                 onResetData={handleResetData}
               />
+            )}
+              </>
             )}
           </main>
 

@@ -4,7 +4,8 @@ import {
   setDoc, 
   deleteDoc, 
   onSnapshot,
-  query
+  query,
+  limit
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, isQuotaExceeded } from './firebase';
 import { Product, ProductSale, Transaction, DailyBalance, AppSettings, MobilePurchaseRecord, Supplier } from '../types';
@@ -22,14 +23,14 @@ function cleanPayload<T extends Record<string, any>>(obj: T): T {
 
 const SHOP_PATH = 'shops/mainShop';
 
-// 1. PRODUCTS
+// 1. PRODUCTS (Limited to prevent quota spikes)
 export function subscribeProducts(
   onUpdate: (products: Product[]) => void,
   onError?: (err: any) => void
 ) {
   const colPath = `${SHOP_PATH}/products`;
   try {
-    const q = query(collection(db, colPath));
+    const q = query(collection(db, colPath), limit(200));
     return onSnapshot(q, (snapshot) => {
       const products: Product[] = [];
       snapshot.forEach((docSnap) => {
@@ -71,7 +72,7 @@ export function subscribeProductSales(
 ) {
   const colPath = `${SHOP_PATH}/productSales`;
   try {
-    const q = query(collection(db, colPath));
+    const q = query(collection(db, colPath), limit(150));
     return onSnapshot(q, (snapshot) => {
       const sales: ProductSale[] = [];
       snapshot.forEach((docSnap) => {
@@ -105,7 +106,7 @@ export function subscribeTransactions(
 ) {
   const colPath = `${SHOP_PATH}/transactions`;
   try {
-    const q = query(collection(db, colPath));
+    const q = query(collection(db, colPath), limit(150));
     return onSnapshot(q, (snapshot) => {
       const list: Transaction[] = [];
       snapshot.forEach((docSnap) => {
@@ -148,7 +149,7 @@ export function subscribeDailyBalances(
 ) {
   const colPath = `${SHOP_PATH}/dailyBalances`;
   try {
-    const q = query(collection(db, colPath));
+    const q = query(collection(db, colPath), limit(60));
     return onSnapshot(q, (snapshot) => {
       const map: Record<string, DailyBalance> = {};
       snapshot.forEach((docSnap) => {
@@ -214,7 +215,7 @@ export function subscribeMobilePurchases(
 ) {
   const colPath = `${SHOP_PATH}/mobilePurchases`;
   try {
-    const q = query(collection(db, colPath));
+    const q = query(collection(db, colPath), limit(150));
     return onSnapshot(q, (snapshot) => {
       const purchases: MobilePurchaseRecord[] = [];
       snapshot.forEach((docSnap) => {
@@ -256,7 +257,7 @@ export function subscribeSuppliers(
 ) {
   const colPath = `${SHOP_PATH}/suppliers`;
   try {
-    const q = query(collection(db, colPath));
+    const q = query(collection(db, colPath), limit(100));
     return onSnapshot(q, (snapshot) => {
       const suppliers: Supplier[] = [];
       snapshot.forEach((docSnap) => {

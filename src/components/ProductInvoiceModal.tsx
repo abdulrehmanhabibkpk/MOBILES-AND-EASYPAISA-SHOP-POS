@@ -32,7 +32,12 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
       .map((item, idx) => `${idx + 1}. ${item.productName} (x${item.quantity}) = Rs. ${item.totalSalePrice.toLocaleString()}`)
       .join('\n');
 
-    const msg = `🧾 *Sale Bill Receipt*\n*${settings.shopName || 'Mobiles and EasyPaisa Shop POS'}*\n📍 ${settings.address || 'GT Road Sarai Saleh'}\n📞 Contact: ${settings.ownerName || 'Umer Ali'} (${settings.phone || '03319348330'})\n-------------------------\n*Invoice #: ${sale.invoiceNo}*\n*Date:* ${sale.date} ${sale.time}\n*Customer:* ${sale.customerName || 'Walk-in Customer'}\n-------------------------\n${itemLines}\n-------------------------\n*Subtotal:* Rs. ${sale.totalAmount.toLocaleString()}\n${sale.discount > 0 ? `*Discount:* Rs. ${sale.discount.toLocaleString()}\n` : ''}*Net Paid Amount:* Rs. ${sale.netAmount.toLocaleString()}\n*Payment Method:* ${sale.paymentMethod}\n-------------------------\nThank you for shopping with us!`;
+    const contactPart = [
+      settings.ownerName ? `📞 Contact: ${settings.ownerName}` : '',
+      settings.phone ? `(${settings.phone})` : '',
+    ].filter(Boolean).join(' ');
+
+    const msg = `🧾 *Sale Bill Receipt*\n*${settings.shopName || 'Mobile Shop & EasyPaisa'}*${settings.address ? `\n📍 ${settings.address}` : ''}${contactPart ? `\n${contactPart}` : ''}\n-------------------------\n*Invoice #: ${sale.invoiceNo}*\n*Date:* ${sale.date} ${sale.time}\n*Customer:* ${sale.customerName || 'Walk-in Customer'}\n-------------------------\n${itemLines}\n-------------------------\n*Subtotal:* Rs. ${sale.totalAmount.toLocaleString()}\n${sale.discount > 0 ? `*Discount:* Rs. ${sale.discount.toLocaleString()}\n` : ''}*Net Paid Amount:* Rs. ${sale.netAmount.toLocaleString()}\n*Payment Method:* ${sale.paymentMethod}\n-------------------------\nThank you for shopping with us!`;
 
     const url = sale.customerPhone 
       ? `https://wa.me/${sale.customerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`
@@ -51,11 +56,18 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text(settings.shopName || 'Mobiles and EasyPaisa Shop POS', 14, 14);
+    doc.text(settings.shopName || 'Mobile Shop & EasyPaisa', 14, 14);
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Contact: ${settings.ownerName || 'Umer Ali'} (${settings.phone || '03319348330'}) | Address: ${settings.address || 'GT Road Sarai Saleh'}`, 14, 23);
+    const invoicePdfContact = [
+      settings.ownerName ? `Contact: ${settings.ownerName}` : '',
+      settings.phone ? `(${settings.phone})` : '',
+      settings.address ? `| Address: ${settings.address}` : '',
+    ].filter(Boolean).join(' ');
+    if (invoicePdfContact) {
+      doc.text(invoicePdfContact, 14, 23);
+    }
     doc.text('RETAIL SALE INVOICE RECEIPT', 14, 28);
 
     // Bill Details Box

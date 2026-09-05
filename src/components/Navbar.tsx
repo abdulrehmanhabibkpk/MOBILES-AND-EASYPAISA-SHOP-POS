@@ -41,6 +41,7 @@ interface NavbarProps {
   onOpenNewTransaction: () => void;
   onOpenOpeningBalance: () => void;
   onLogout?: () => void;
+  loading?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -54,6 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNewTransaction,
   onOpenOpeningBalance,
   onLogout,
+  loading = false,
 }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerSearch, setDrawerSearch] = useState('');
@@ -104,11 +106,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           <div className="min-w-0 overflow-hidden">
-            <h1 className={`text-xs sm:text-base font-extrabold leading-tight truncate ${isLight ? 'text-neutral-900' : 'text-white'}`}>
-              {settings.shopName || 'Mobiles and EasyPaisa Shop POS'}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className={`text-xs sm:text-base font-extrabold leading-tight truncate ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                {settings.shopName || 'Balal Mobiles and EasyPaisa Shop'}
+              </h1>
+              {loading && (
+                <div className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/20 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                  <span>Syncing...</span>
+                </div>
+              )}
+            </div>
             <p className="text-[9px] sm:text-xs text-emerald-600 font-semibold truncate hidden sm:block">
-              MOBILES AND EASYPAISA SHOP POS
+              BALAL MOBILES AND EASYPAISA SHOP POS
             </p>
           </div>
         </div>

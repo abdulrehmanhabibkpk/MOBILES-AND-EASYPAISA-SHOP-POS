@@ -656,22 +656,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         </div>
 
-        {/* Reset System */}
+        {/* Reset / Clean System */}
         <div className={`pt-4 border-t ${isLight ? 'border-slate-200' : 'border-slate-800'} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3`}>
           <div>
-            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">Reset System Data</p>
-            <p className={`text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Clear all records and reload default sample data</p>
+            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">Clear Fake / Sample Cache Data</p>
+            <p className={`text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Remove any remaining dummy/sample records from local cache and sync clean shop data</p>
           </div>
           <button
             onClick={() => {
-              if (confirm('Kya aap waqai tamaam data reset karke sample data load karna chahte hain?')) {
+              if (confirm('Kya aap tamaam fake/sample data browser cache se bilkul saaf karna chahte hain?')) {
                 onResetData();
+                window.location.reload();
               }
             }}
             className="w-full sm:w-auto px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Data</span>
+            <span>Clear Fake Data & Reset Cache</span>
           </button>
         </div>
       </div>

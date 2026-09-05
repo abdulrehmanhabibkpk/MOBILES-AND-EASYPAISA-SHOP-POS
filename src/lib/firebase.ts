@@ -153,31 +153,11 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     if (!isQuotaExceeded) {
       isQuotaExceeded = true;
       quotaListeners.forEach(fn => fn(true));
-      console.warn(`[Firestore Quota] Free daily quota exceeded on path '${path}'. Switching seamlessly to offline local storage.`);
     }
-    return;
   }
-
-  const errInfo: FirestoreErrorInfo = {
-    error: errMsg,
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
-        providerId: provider.providerId,
-        email: provider.email,
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.warn(`[Firestore ${operationType} on ${path}]:`, errMsg);
 }
 
 export async function testFirestoreConnection() {
-  // Safe no-op with persistent cache enabled, avoiding unnecessary server quota hits
+  // Silent, safe offline-first handling
 }

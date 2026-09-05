@@ -7,121 +7,149 @@ const SETTINGS_KEY = 'ep_ledger_settings_v1';
 const PRODUCTS_KEY = 'ep_ledger_products_v1';
 const PRODUCT_SALES_KEY = 'ep_ledger_product_sales_v1';
 const MOBILE_PURCHASES_KEY = 'ep_ledger_mobile_purchases_v1';
+export const SUPPLIERS_KEY = 'balal_mobiles_suppliers';
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  shopName: 'Mobiles and EasyPaisa Shop POS',
-  ownerName: 'Umer Ali',
-  phone: '03319348330',
-  address: 'Near Sadeeq e Akbar Masjid GT Road Sarai Saleh',
+  shopName: 'Balal Mobiles & EasyPaisa Shop',
+  ownerName: '',
+  phone: '',
+  address: '',
   pinCode: '6242',
   isLocked: true,
   theme: 'light',
   language: 'en',
-  easyPaisaNumber: '0331-9348330',
-  jazzCashNumber: '0331-9348330',
+  easyPaisaNumber: '',
+  jazzCashNumber: '',
   allowedAccounts: [
     {
       id: 'acc-1',
       email: 'owner@mobile.com',
       password: 'mobile123',
-      name: 'Umer Ali Owner',
+      name: 'Shop Owner',
       role: 'Owner',
     },
     {
       id: 'acc-2',
       email: 'manager@mobile.com',
       password: '123456',
-      name: 'Umer Ali Manager',
+      name: 'Shop Manager',
       role: 'Manager',
     }
   ],
 };
 
-// No dummy sample data - start with 100% clean real data from Firebase or user input
-const SAMPLE_CLEANUP_FLAG = 'ep_sample_data_cleaned_v2';
-
-export function cleanupSampleDataFromLocalStorage() {
+// Purge any fake template / dummy data from browser cache
+export function purgeAllFakeSampleData(): void {
   try {
-    const isCleaned = localStorage.getItem(SAMPLE_CLEANUP_FLAG);
-    if (!isCleaned) {
-      // 1. Clean products: remove prod-1 .. prod-8
-      const prodData = localStorage.getItem(PRODUCTS_KEY);
-      if (prodData) {
-        try {
-          const prods: Product[] = JSON.parse(prodData);
-          const cleanProds = prods.filter(p => !p.id.startsWith('prod-'));
+    // 1. Purge fake products
+    const prodData = localStorage.getItem(PRODUCTS_KEY);
+    if (prodData) {
+      try {
+        const prods: Product[] = JSON.parse(prodData);
+        if (Array.isArray(prods)) {
+          const cleanProds = prods.filter(p => 
+            !p.id.startsWith('prod-') && 
+            !p.name.includes('Vivo Y21') && 
+            !p.name.includes('Samsung Galaxy A14') &&
+            !p.name.includes('Samsung 25W') &&
+            !p.name.includes('Airpods Pro') &&
+            !p.name.includes('9D Full Curved') &&
+            !p.name.includes('Silicone Case') &&
+            !p.name.includes('Heavy Bass') &&
+            !p.name.includes('Type-C Braided')
+          );
           localStorage.setItem(PRODUCTS_KEY, JSON.stringify(cleanProds));
-        } catch {}
-      }
+        }
+      } catch {}
+    }
 
-      // 2. Clean sales: remove sale-1
-      const salesData = localStorage.getItem(PRODUCT_SALES_KEY);
-      if (salesData) {
-        try {
-          const sales: ProductSale[] = JSON.parse(salesData);
-          const cleanSales = sales.filter(s => !s.id.startsWith('sale-') && s.invoiceNo !== 'INV-1001');
-          localStorage.setItem(PRODUCT_SALES_KEY, JSON.stringify(cleanSales));
-        } catch {}
-      }
-
-      // 3. Clean transactions: remove trx-101 .. trx-104
-      const trxData = localStorage.getItem(TRANSACTIONS_KEY);
-      if (trxData) {
-        try {
-          const trx: Transaction[] = JSON.parse(trxData);
-          const cleanTrx = trx.filter(t => !t.id.startsWith('trx-10'));
-          localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(cleanTrx));
-        } catch {}
-      }
-
-      // 4. Clean mobile purchases: remove sample purchases
-      const purData = localStorage.getItem(MOBILE_PURCHASES_KEY);
-      if (purData) {
-        try {
-          const purs: MobilePurchaseRecord[] = JSON.parse(purData);
-          const cleanPurs = purs.filter(p => p.id !== 'pur-1001' && p.id !== 'pur-1003' && !p.sellerName?.includes('Hassnain Jaleel'));
+    // 2. Purge fake mobile purchases
+    const purData = localStorage.getItem(MOBILE_PURCHASES_KEY);
+    if (purData) {
+      try {
+        const purs: MobilePurchaseRecord[] = JSON.parse(purData);
+        if (Array.isArray(purs)) {
+          const cleanPurs = purs.filter(p => 
+            p.id !== 'pur-1001' && 
+            p.id !== 'pur-1002' && 
+            p.id !== 'pur-1003' && 
+            !p.sellerName?.includes('Hassnain Jaleel') && 
+            !p.sellerName?.includes('Abdul Rehman') &&
+            !p.sellerPhone?.includes('03078382955')
+          );
           localStorage.setItem(MOBILE_PURCHASES_KEY, JSON.stringify(cleanPurs));
-        } catch {}
-      }
+        }
+      } catch {}
+    }
 
-      // 5. Clean suppliers: remove sup-1, sup-2
-      const supData = localStorage.getItem(SUPPLIERS_KEY);
-      if (supData) {
-        try {
-          const sups: Supplier[] = JSON.parse(supData);
-          const cleanSups = sups.filter(s => s.id !== 'sup-1' && s.id !== 'sup-2');
+    // 3. Purge fake product sales
+    const salesData = localStorage.getItem(PRODUCT_SALES_KEY);
+    if (salesData) {
+      try {
+        const sales: ProductSale[] = JSON.parse(salesData);
+        if (Array.isArray(sales)) {
+          const cleanSales = sales.filter(s => 
+            !s.id.startsWith('sale-') && 
+            s.invoiceNo !== 'INV-1001' && 
+            !s.customerName?.includes('Kashif Mehmood')
+          );
+          localStorage.setItem(PRODUCT_SALES_KEY, JSON.stringify(cleanSales));
+        }
+      } catch {}
+    }
+
+    // 4. Purge fake suppliers
+    const supData = localStorage.getItem(SUPPLIERS_KEY);
+    if (supData) {
+      try {
+        const sups: Supplier[] = JSON.parse(supData);
+        if (Array.isArray(sups)) {
+          const cleanSups = sups.filter(s => 
+            s.id !== 'sup-1' && 
+            s.id !== 'sup-2' && 
+            !s.name?.includes('Al-Madina') && 
+            !s.name?.includes('Master Electronics')
+          );
           localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(cleanSups));
-        } catch {}
-      }
+        }
+      } catch {}
+    }
 
-      // 6. Clean default 50k / 100k daily balances if they were the mock ones
-      const balData = localStorage.getItem(DAILY_BALANCES_KEY);
-      if (balData) {
-        try {
-          const bals: Record<string, DailyBalance> = JSON.parse(balData);
-          let modified = false;
-          for (const key of Object.keys(bals)) {
-            if (bals[key].openingCash === 50000 && bals[key].openingEasyPaisa === 100000) {
-              bals[key].openingCash = 0;
-              bals[key].openingEasyPaisa = 0;
-              modified = true;
-            }
-          }
-          if (modified) {
-            localStorage.setItem(DAILY_BALANCES_KEY, JSON.stringify(bals));
-          }
-        } catch {}
-      }
+    // 5. Purge fake transactions
+    const trxData = localStorage.getItem(TRANSACTIONS_KEY);
+    if (trxData) {
+      try {
+        const trx: Transaction[] = JSON.parse(trxData);
+        if (Array.isArray(trx)) {
+          const cleanTrx = trx.filter(t => 
+            !t.id.startsWith('trx-10') && 
+            !t.customerName?.includes('Sample Customer')
+          );
+          localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(cleanTrx));
+        }
+      } catch {}
+    }
 
-      localStorage.setItem(SAMPLE_CLEANUP_FLAG, 'true');
+    // 6. Clean settings if it had fake test names
+    const settingsData = localStorage.getItem(SETTINGS_KEY);
+    if (settingsData) {
+      try {
+        const parsed = JSON.parse(settingsData);
+        if (parsed.ownerName === 'Umer Ali' && parsed.phone === '03319348330') {
+          parsed.ownerName = '';
+          parsed.phone = '';
+          parsed.address = '';
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
+        }
+      } catch {}
     }
   } catch (err) {
-    console.warn("Could not clean sample data:", err);
+    console.warn('Purge fake data warning:', err);
   }
 }
 
-// Run cleanup immediately
-cleanupSampleDataFromLocalStorage();
+// Run purge on script load
+purgeAllFakeSampleData();
 
 export const getStoredTransactions = (): Transaction[] => {
   try {
@@ -152,28 +180,21 @@ export const saveExpenses = (expenses: Expense[]): void => {
 export const getStoredDailyBalances = (): Record<string, DailyBalance> => {
   try {
     const data = localStorage.getItem(DAILY_BALANCES_KEY);
-    return data ? JSON.parse(data) : {
-      [new Date().toISOString().split('T')[0]]: {
-        date: new Date().toISOString().split('T')[0],
-        openingCash: 0,
-        openingEasyPaisa: 0,
-      }
-    };
+    return data ? JSON.parse(data) : {};
   } catch {
-    return {
-      [new Date().toISOString().split('T')[0]]: {
-        date: new Date().toISOString().split('T')[0],
-        openingCash: 0,
-        openingEasyPaisa: 0,
-      }
-    };
+    return {};
   }
 };
 
+export const getDailyBalance = (dateStr: string): DailyBalance => {
+  const all = getStoredDailyBalances();
+  return all[dateStr] || { date: dateStr, openingCash: 0, openingEasyPaisa: 0 };
+};
+
 export const saveDailyBalance = (balance: DailyBalance): void => {
-  const current = getStoredDailyBalances();
-  current[balance.date] = balance;
-  localStorage.setItem(DAILY_BALANCES_KEY, JSON.stringify(current));
+  const all = getStoredDailyBalances();
+  all[balance.date] = balance;
+  localStorage.setItem(DAILY_BALANCES_KEY, JSON.stringify(all));
 };
 
 export const saveAllDailyBalances = (balances: Record<string, DailyBalance>): void => {
@@ -189,15 +210,6 @@ export const getStoredSettings = (): AppSettings => {
     }
     const parsed = JSON.parse(data);
     parsed.language = 'en';
-    if (!parsed.shopName || parsed.shopName === 'Omer Ali Mobile Shop' || parsed.shopName === 'Omer Ali Mobile' || parsed.shopName === 'Bilal Mobiles and EasyPaisa Shop' || parsed.shopName === 'Balal Mobile Shop') {
-      parsed.shopName = DEFAULT_SETTINGS.shopName;
-      parsed.ownerName = DEFAULT_SETTINGS.ownerName;
-      parsed.phone = DEFAULT_SETTINGS.phone;
-      parsed.address = DEFAULT_SETTINGS.address;
-      parsed.easyPaisaNumber = DEFAULT_SETTINGS.easyPaisaNumber;
-      parsed.jazzCashNumber = DEFAULT_SETTINGS.jazzCashNumber;
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
-    }
     return { ...DEFAULT_SETTINGS, ...parsed };
   } catch {
     return DEFAULT_SETTINGS;
@@ -211,10 +223,14 @@ export const saveSettings = (settings: AppSettings): void => {
 export const getStoredProducts = (): Product[] => {
   try {
     const data = localStorage.getItem(PRODUCTS_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return [];
 };
 
 export const saveProducts = (products: Product[]): void => {
@@ -224,10 +240,14 @@ export const saveProducts = (products: Product[]): void => {
 export const getStoredProductSales = (): ProductSale[] => {
   try {
     const data = localStorage.getItem(PRODUCT_SALES_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return [];
 };
 
 export const saveProductSales = (sales: ProductSale[]): void => {
@@ -323,10 +343,14 @@ export const getCustomerSummaries = (transactions: Transaction[]): CustomerSumma
 export const getStoredMobilePurchases = (): MobilePurchaseRecord[] => {
   try {
     const data = localStorage.getItem(MOBILE_PURCHASES_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return [];
 };
 
 export const saveMobilePurchases = (records: MobilePurchaseRecord[]): void => {
@@ -337,15 +361,17 @@ export const saveMobilePurchases = (records: MobilePurchaseRecord[]): void => {
   }
 };
 
-export const SUPPLIERS_KEY = 'balal_mobiles_suppliers';
-
 export const getStoredSuppliers = (): Supplier[] => {
   try {
     const data = localStorage.getItem(SUPPLIERS_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return [];
 };
 
 export const saveSuppliers = (suppliers: Supplier[]): void => {

@@ -14,11 +14,18 @@ export const generateTransactionVoucherPDF = (trx: Transaction, settings: AppSet
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text(settings.shopName || 'Mobiles and EasyPaisa Shop POS', 105, 12, { align: 'center' });
+  doc.text(settings.shopName || 'Mobile Shop & EasyPaisa', 105, 12, { align: 'center' });
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Contact: Umer Ali (${settings.phone || '03319348330'}) | Address: ${settings.address || 'Near Sadeeq e Akbar Masjid GT Road Sarai Saleh'}`, 105, 20, { align: 'center' });
+  const contactText = [
+    settings.ownerName ? `Contact: ${settings.ownerName}` : '',
+    settings.phone ? `(${settings.phone})` : '',
+    settings.address ? `| ${settings.address}` : ''
+  ].filter(Boolean).join(' ');
+  if (contactText) {
+    doc.text(contactText, 105, 20, { align: 'center' });
+  }
 
   // Receipt Details Box
   doc.setTextColor(30, 41, 59);
@@ -90,14 +97,21 @@ export const generateDailyClosingPDF = (
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(15);
   doc.setFont('helvetica', 'bold');
-  doc.text(settings.shopName || 'Mobiles and EasyPaisa Shop POS', 105, 12, { align: 'center' });
+  doc.text(settings.shopName || 'Mobile Shop & EasyPaisa', 105, 12, { align: 'center' });
 
   doc.setFontSize(11);
   doc.text(`DAILY CLOSING LEDGER REPORT - DATE: ${dateStr}`, 105, 20, { align: 'center' });
 
   doc.setFontSize(8);
   doc.setTextColor(203, 213, 225);
-  doc.text(`Contact: Umer Ali (${settings.phone || '03319348330'}) | GT Road Sarai Saleh`, 105, 27, { align: 'center' });
+  const closingContact = [
+    settings.ownerName ? `Contact: ${settings.ownerName}` : '',
+    settings.phone ? `(${settings.phone})` : '',
+    settings.address ? `| ${settings.address}` : ''
+  ].filter(Boolean).join(' ');
+  if (closingContact) {
+    doc.text(closingContact, 105, 27, { align: 'center' });
+  }
 
   // Summary Metrics Table
   doc.setTextColor(15, 23, 42);
@@ -201,7 +215,14 @@ export const generateMonthlyReportPDF = (
   doc.text(`MONTHLY LEDGER STATEMENT - ${monthLabel.toUpperCase()}`, 105, 20, { align: 'center' });
 
   doc.setFontSize(8);
-  doc.text(`Contact: Umer Ali (${settings.phone || '03319348330'}) | GT Road Sarai Saleh`, 105, 27, { align: 'center' });
+  const monthContact = [
+    settings.ownerName ? `Contact: ${settings.ownerName}` : '',
+    settings.phone ? `(${settings.phone})` : '',
+    settings.address ? `| ${settings.address}` : ''
+  ].filter(Boolean).join(' ');
+  if (monthContact) {
+    doc.text(monthContact, 105, 27, { align: 'center' });
+  }
 
   let totalBuy = 0;
   let totalSell = 0;
