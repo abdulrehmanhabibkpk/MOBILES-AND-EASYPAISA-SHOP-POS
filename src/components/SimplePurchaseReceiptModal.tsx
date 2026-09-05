@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { MobilePurchaseRecord, AppSettings } from '../types';
 import { 
   X, 
@@ -363,9 +364,9 @@ export const SimplePurchaseReceiptModal: React.FC<SimplePurchaseReceiptModalProp
     );
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto print:p-0 print:m-0 print:bg-white">
-      <div className="bg-slate-100 text-slate-900 w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200 my-auto print-full-width print:max-w-none print:w-full print:shadow-none print:border-none print:m-0 print:rounded-none">
+  return createPortal(
+    <div id="simple-purchase-receipt-portal" className="receipt-portal-root fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto print:p-0 print:m-0 print:bg-white print:static print:inset-auto print:overflow-visible">
+      <div className="bg-slate-100 text-slate-900 w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200 my-auto print-full-width print:max-w-none print:w-full print:shadow-none print:border-none print:m-0 print:rounded-none print:bg-white">
         
         {/* Header Controls (Screen Only) */}
         <div className="p-3.5 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2.5 print:hidden">
@@ -453,10 +454,12 @@ export const SimplePurchaseReceiptModal: React.FC<SimplePurchaseReceiptModalProp
         </div>
 
         {/* PRINTABLE RECEIPT CONTAINER */}
-        <div className="p-4 sm:p-6 space-y-6 max-h-[82vh] overflow-y-auto print:max-h-none print:overflow-visible print:p-2 print:space-y-4">
+        <div className="p-4 sm:p-6 space-y-6 max-h-[82vh] overflow-y-auto print:max-h-none print:overflow-visible print:p-0 print:space-y-4">
           
           {(copyMode === 'both' || copyMode === 'customer') && (
-            renderReceiptCard('customer')
+            <div className={copyMode === 'both' && pageLayout === 'separate' ? 'page-break-after-always mb-8 print:mb-0' : ''}>
+              {renderReceiptCard('customer')}
+            </div>
           )}
 
           {copyMode === 'both' && pageLayout === 'two_in_one' && (
@@ -468,12 +471,15 @@ export const SimplePurchaseReceiptModal: React.FC<SimplePurchaseReceiptModalProp
           )}
 
           {(copyMode === 'both' || copyMode === 'shop') && (
-            renderReceiptCard('shop')
+            <div>
+              {renderReceiptCard('shop')}
+            </div>
           )}
 
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

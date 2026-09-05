@@ -13,14 +13,30 @@ import {
   User 
 } from 'firebase/auth';
 import { 
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   getFirestore, 
   doc, 
-  getDocFromServer 
+  getDoc 
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+// Initialize Firestore with persistent IndexedDB local cache for fast offline sync and quota savings
+let firestoreDb;
+try {
+  firestoreDb = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  }, firebaseConfig.firestoreDatabaseId);
+} catch (e) {
+  firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+}
+
+export const db = firestoreDb;
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
@@ -163,20 +179,5 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 }
 
 export async function testFirestoreConnection() {
-  if (isQuotaExceeded) return;
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error: any) {
-    const errMsg = error?.message || String(error);
-    if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource-exhausted')) {
-      if (!isQuotaExceeded) {
-        isQuotaExceeded = true;
-        quotaListeners.forEach(fn => fn(true));
-      }
-      return;
-    }
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firebase client is offline.');
-    }
-  }
+  // Safe no-op with persistent cache enabled, avoiding unnecessary server quota hits
 }

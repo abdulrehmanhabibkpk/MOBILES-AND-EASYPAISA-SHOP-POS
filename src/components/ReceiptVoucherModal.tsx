@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Printer, Download, ShieldCheck, CheckCircle, Smartphone, Share2 } from 'lucide-react';
 import { Transaction, AppSettings } from '../types';
 import { generateTransactionVoucherPDF } from '../lib/pdf';
@@ -17,9 +18,19 @@ export const ReceiptVoucherModal: React.FC<ReceiptVoucherModalProps> = ({
   transaction,
   settings,
 }) => {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('thermal-print-mode');
+    }
+    return () => {
+      document.body.classList.remove('thermal-print-mode');
+    };
+  }, [isOpen]);
+
   if (!isOpen || !transaction) return null;
 
   const handlePrint = () => {
+    document.body.classList.add('thermal-print-mode');
     window.print();
   };
 
@@ -46,8 +57,8 @@ export const ReceiptVoucherModal: React.FC<ReceiptVoucherModalProps> = ({
 
   const channelInfo = getPaymentChannelInfo(transaction.paymentMethod);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:static print:block">
+  return createPortal(
+    <div id="receipt-voucher-portal" className="receipt-portal-root fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:static print:block">
       <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden text-slate-800 my-auto max-h-[92vh] flex flex-col print:shadow-none print:border-none print:m-0 print:max-h-none print:w-full print:rounded-none">
         
         {/* Top Header - EasyPaisa Theme (Screen View) */}
@@ -192,6 +203,7 @@ export const ReceiptVoucherModal: React.FC<ReceiptVoucherModalProps> = ({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

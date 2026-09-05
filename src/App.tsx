@@ -5,6 +5,7 @@ import {
   saveTransactions, 
   getStoredDailyBalances, 
   saveDailyBalance, 
+  saveAllDailyBalances,
   getStoredSettings, 
   saveSettings,
   DEFAULT_SETTINGS,
@@ -116,45 +117,52 @@ export default function App() {
     testFirestoreConnection();
 
     const unsubProducts = subscribeProducts((remoteProducts) => {
-      if (remoteProducts && remoteProducts.length > 0) {
+      if (Array.isArray(remoteProducts)) {
         setProducts(remoteProducts);
+        saveProducts(remoteProducts);
       }
     });
 
     const unsubSales = subscribeProductSales((remoteSales) => {
-      if (remoteSales && remoteSales.length > 0) {
+      if (Array.isArray(remoteSales)) {
         setProductSales(remoteSales);
+        saveProductSales(remoteSales);
       }
     });
 
     const unsubPurchases = subscribeMobilePurchases((remotePurchases) => {
-      if (remotePurchases && remotePurchases.length > 0) {
+      if (Array.isArray(remotePurchases)) {
         const cleanRemote = remotePurchases.filter(p => p.id !== 'pur-1003' && !p.sellerName?.includes('Abdul Rehman'));
         setMobilePurchases(cleanRemote);
+        saveMobilePurchases(cleanRemote);
       }
     });
 
     const unsubSuppliers = subscribeSuppliers((remoteSuppliers) => {
-      if (remoteSuppliers && remoteSuppliers.length > 0) {
+      if (Array.isArray(remoteSuppliers)) {
         setSuppliers(remoteSuppliers);
+        saveSuppliers(remoteSuppliers);
       }
     });
 
     const unsubTrx = subscribeTransactions((remoteTrx) => {
-      if (remoteTrx && remoteTrx.length > 0) {
+      if (Array.isArray(remoteTrx)) {
         setTransactions(remoteTrx);
+        saveTransactions(remoteTrx);
       }
     });
 
     const unsubBalances = subscribeDailyBalances((remoteBalances) => {
       if (remoteBalances && Object.keys(remoteBalances).length > 0) {
         setDailyBalances(remoteBalances);
+        saveAllDailyBalances(remoteBalances);
       }
     });
 
     const unsubSettings = subscribeAppSettings((remoteSettings) => {
       if (remoteSettings && remoteSettings.shopName) {
         setSettings(remoteSettings);
+        saveSettings(remoteSettings);
       }
     });
 

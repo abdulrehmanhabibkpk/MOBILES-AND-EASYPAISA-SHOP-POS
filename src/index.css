@@ -16,11 +16,19 @@
 @media print {
   @page {
     size: auto;
-    margin: 6mm;
+    margin: 8mm;
+  }
+
+  /* When printing any receipt modal, HIDE the entire background app (#root) */
+  body.document-print-mode #root,
+  body.thermal-print-mode #root,
+  body:has(#simple-purchase-receipt-portal) #root,
+  body:has(.receipt-portal-root) #root {
+    display: none !important;
   }
 
   /* Hide app navigation, header, footer, background buttons during printing */
-  header, footer, nav, button, .print\:hidden {
+  header, footer, nav, button, select, .print\:hidden {
     display: none !important;
   }
 
@@ -29,6 +37,8 @@
     color: #000000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   /* When printing thermal receipts specifically */
@@ -51,12 +61,12 @@
     background: #ffffff !important;
   }
 
-  body.document-print-mode .fixed {
+  /* Clean isolation for the portal receipt */
+  #simple-purchase-receipt-portal,
+  .receipt-portal-root {
     position: static !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
+    inset: auto !important;
+    display: block !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -64,15 +74,17 @@
     background: #ffffff !important;
     box-shadow: none !important;
     overflow: visible !important;
+    z-index: 999999 !important;
   }
 
-  body.document-print-mode .print-full-width {
+  .print-full-width {
     width: 100% !important;
     max-width: 100% !important;
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
     margin: 0 !important;
+    background: #ffffff !important;
   }
 
   /* Page break utilities */

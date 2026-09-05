@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Printer, Download, Smartphone, CheckCircle2, ShieldCheck, Share2, FileText, Receipt } from 'lucide-react';
 import { ProductSale, AppSettings } from '../types';
 import jsPDF from 'jspdf';
@@ -110,8 +111,8 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
     doc.save(`Invoice_${sale.invoiceNo}.pdf`);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:static print:block">
+  return createPortal(
+    <div id="product-invoice-portal" className="receipt-portal-root fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:static print:block">
       
       {/* Global Thermal Printer Page Styles when printing */}
       <style>{`
@@ -495,6 +496,7 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

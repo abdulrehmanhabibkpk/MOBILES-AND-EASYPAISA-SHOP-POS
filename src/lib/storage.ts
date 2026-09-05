@@ -37,219 +37,98 @@ export const DEFAULT_SETTINGS: AppSettings = {
   ],
 };
 
-// Seed sample mobile phones & accessories inventory
-const SAMPLE_PRODUCTS: Product[] = [
-  {
-    id: 'prod-1',
-    name: 'Vivo Y21 (4GB / 64GB)',
-    category: 'MOBILES',
-    purchasePrice: 32000,
-    salePrice: 36500,
-    stock: 5,
-    image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=400&q=80',
-    brandOrModel: 'Vivo Y21',
-    imeiOrSerial: '358291048291029',
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 5,
-  },
-  {
-    id: 'prod-2',
-    name: 'Samsung Galaxy A14',
-    category: 'MOBILES',
-    purchasePrice: 38500,
-    salePrice: 43000,
-    stock: 3,
-    image: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=400&q=80',
-    brandOrModel: 'Samsung A14',
-    imeiOrSerial: '351029384729102',
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 4,
-  },
-  {
-    id: 'prod-3',
-    name: 'Samsung 25W Type-C Super Fast Charger',
-    category: 'CHARGERS',
-    purchasePrice: 650,
-    salePrice: 1200,
-    stock: 18,
-    image: 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=400&q=80',
-    brandOrModel: 'Samsung 25W',
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 3,
-  },
-  {
-    id: 'prod-4',
-    name: 'Wireless Airpods Pro TWS Bluetooth',
-    category: 'EARPHONES',
-    purchasePrice: 1100,
-    salePrice: 2200,
-    stock: 12,
-    image: 'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?auto=format&fit=crop&w=400&q=80',
-    brandOrModel: 'Airpods Pro',
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 3,
-  },
-  {
-    id: 'prod-5',
-    name: '9D Full Curved Glass Protector',
-    category: 'PROTECTORS',
-    purchasePrice: 70,
-    salePrice: 250,
-    stock: 45,
-    image: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?auto=format&fit=crop&w=400&q=80',
-    brandOrModel: 'Universal Glass',
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
-  },
-  {
-    id: 'prod-6',
-    name: 'Transparent Shockproof Silicone Case',
-    category: 'COVERS',
-    purchasePrice: 80,
-    salePrice: 300,
-    stock: 25,
-    image: 'https://images.unsplash.com/photo-1541877944-ac82a091518a?auto=format&fit=crop&w=400&q=80',
-    brandOrModel: 'Universal Case',
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
-  },
-  {
-    id: 'prod-7',
-    name: 'Heavy Bass Handsfree 3.5mm Jack',
-    category: 'EARPHONES',
-    purchasePrice: 150,
-    salePrice: 450,
-    stock: 30,
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80',
-    brandOrModel: 'Heavy Bass',
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 1,
-  },
-  {
-    id: 'prod-8',
-    name: 'Type-C Braided Fast Charging Cable',
-    category: 'CABLES',
-    purchasePrice: 120,
-    salePrice: 350,
-    stock: 22,
-    image: 'https://images.unsplash.com/photo-1585338107529-13afc5f02586?auto=format&fit=crop&w=400&q=80',
-    brandOrModel: 'Braided Type-C',
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 1,
-  }
-];
+// No dummy sample data - start with 100% clean real data from Firebase or user input
+const SAMPLE_CLEANUP_FLAG = 'ep_sample_data_cleaned_v2';
 
-// Seed sample product sales
-const SAMPLE_PRODUCT_SALES: ProductSale[] = [
-  {
-    id: 'sale-1',
-    invoiceNo: 'INV-1001',
-    date: new Date().toISOString().split('T')[0],
-    time: '10:20 AM',
-    customerName: 'Kashif Mehmood',
-    customerPhone: '0300-8877665',
-    items: [
-      {
-        productId: 'prod-3',
-        productName: 'Samsung 25W Type-C Super Fast Charger',
-        category: 'CHARGERS',
-        quantity: 1,
-        purchasePrice: 650,
-        unitSalePrice: 1200,
-        totalSalePrice: 1200,
-        image: 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=400&q=80',
-      },
-      {
-        productId: 'prod-5',
-        productName: '9D Full Curved Glass Protector',
-        category: 'PROTECTORS',
-        quantity: 1,
-        purchasePrice: 70,
-        unitSalePrice: 250,
-        totalSalePrice: 250,
-        image: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?auto=format&fit=crop&w=400&q=80',
+export function cleanupSampleDataFromLocalStorage() {
+  try {
+    const isCleaned = localStorage.getItem(SAMPLE_CLEANUP_FLAG);
+    if (!isCleaned) {
+      // 1. Clean products: remove prod-1 .. prod-8
+      const prodData = localStorage.getItem(PRODUCTS_KEY);
+      if (prodData) {
+        try {
+          const prods: Product[] = JSON.parse(prodData);
+          const cleanProds = prods.filter(p => !p.id.startsWith('prod-'));
+          localStorage.setItem(PRODUCTS_KEY, JSON.stringify(cleanProds));
+        } catch {}
       }
-    ],
-    totalAmount: 1450,
-    discount: 50,
-    netAmount: 1400,
-    totalPurchaseCost: 720,
-    profit: 680,
-    paymentMethod: 'CASH',
-    createdAt: Date.now() - 1000 * 60 * 150,
-  }
-];
 
-// Seed initial sample transactions if empty so user sees realistic data immediately
-const SAMPLE_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'trx-101',
-    date: new Date().toISOString().split('T')[0],
-    time: '09:30 AM',
-    type: 'BUY_EASYPAISA',
-    customerName: 'Muhammad Ali',
-    customerPhone: '0312-9876543',
-    trxId: '28491029381',
-    easyPaisaAmount: 5000,
-    cashAmount: 4900,
-    feeProfit: 100,
-    expenseAmount: 0,
-    paymentMethod: 'EASYPAISA',
-    notes: 'Customer transferred 5000 EasyPaisa, paid 4900 cash (100 fee)',
-    createdAt: Date.now() - 1000 * 60 * 180,
-  },
-  {
-    id: 'trx-102',
-    date: new Date().toISOString().split('T')[0],
-    time: '11:15 AM',
-    type: 'SELL_EASYPAISA',
-    customerName: 'Usman Ghani',
-    customerPhone: '0301-4455667',
-    trxId: '28491038472',
-    easyPaisaAmount: 10000,
-    cashAmount: 10200,
-    feeProfit: 200,
-    expenseAmount: 0,
-    paymentMethod: 'EASYPAISA',
-    notes: 'Customer paid 10,200 Cash, sent 10,000 EasyPaisa (200 fee)',
-    createdAt: Date.now() - 1000 * 60 * 120,
-  },
-  {
-    id: 'trx-103',
-    date: new Date().toISOString().split('T')[0],
-    time: '01:45 PM',
-    type: 'BUY_EASYPAISA',
-    customerName: 'Bilal Khan',
-    customerPhone: '0333-1122334',
-    trxId: '28491049281',
-    easyPaisaAmount: 25000,
-    cashAmount: 24500,
-    feeProfit: 500,
-    expenseAmount: 0,
-    paymentMethod: 'EASYPAISA',
-    notes: 'Customer cash-out Rs 25,000 (Rs 500 profit)',
-    createdAt: Date.now() - 1000 * 60 * 60,
-  },
-  {
-    id: 'trx-104',
-    date: new Date().toISOString().split('T')[0],
-    time: '03:10 PM',
-    type: 'EXPENSE',
-    customerName: 'Shop Expense',
-    customerPhone: '',
-    trxId: '-',
-    easyPaisaAmount: 0,
-    cashAmount: 0,
-    feeProfit: 0,
-    expenseAmount: 250,
-    paymentMethod: 'CASH',
-    notes: 'Tea & Snacks for shop',
-    createdAt: Date.now() - 1000 * 60 * 30,
-  },
-];
+      // 2. Clean sales: remove sale-1
+      const salesData = localStorage.getItem(PRODUCT_SALES_KEY);
+      if (salesData) {
+        try {
+          const sales: ProductSale[] = JSON.parse(salesData);
+          const cleanSales = sales.filter(s => !s.id.startsWith('sale-') && s.invoiceNo !== 'INV-1001');
+          localStorage.setItem(PRODUCT_SALES_KEY, JSON.stringify(cleanSales));
+        } catch {}
+      }
+
+      // 3. Clean transactions: remove trx-101 .. trx-104
+      const trxData = localStorage.getItem(TRANSACTIONS_KEY);
+      if (trxData) {
+        try {
+          const trx: Transaction[] = JSON.parse(trxData);
+          const cleanTrx = trx.filter(t => !t.id.startsWith('trx-10'));
+          localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(cleanTrx));
+        } catch {}
+      }
+
+      // 4. Clean mobile purchases: remove sample purchases
+      const purData = localStorage.getItem(MOBILE_PURCHASES_KEY);
+      if (purData) {
+        try {
+          const purs: MobilePurchaseRecord[] = JSON.parse(purData);
+          const cleanPurs = purs.filter(p => p.id !== 'pur-1001' && p.id !== 'pur-1003' && !p.sellerName?.includes('Hassnain Jaleel'));
+          localStorage.setItem(MOBILE_PURCHASES_KEY, JSON.stringify(cleanPurs));
+        } catch {}
+      }
+
+      // 5. Clean suppliers: remove sup-1, sup-2
+      const supData = localStorage.getItem(SUPPLIERS_KEY);
+      if (supData) {
+        try {
+          const sups: Supplier[] = JSON.parse(supData);
+          const cleanSups = sups.filter(s => s.id !== 'sup-1' && s.id !== 'sup-2');
+          localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(cleanSups));
+        } catch {}
+      }
+
+      // 6. Clean default 50k / 100k daily balances if they were the mock ones
+      const balData = localStorage.getItem(DAILY_BALANCES_KEY);
+      if (balData) {
+        try {
+          const bals: Record<string, DailyBalance> = JSON.parse(balData);
+          let modified = false;
+          for (const key of Object.keys(bals)) {
+            if (bals[key].openingCash === 50000 && bals[key].openingEasyPaisa === 100000) {
+              bals[key].openingCash = 0;
+              bals[key].openingEasyPaisa = 0;
+              modified = true;
+            }
+          }
+          if (modified) {
+            localStorage.setItem(DAILY_BALANCES_KEY, JSON.stringify(bals));
+          }
+        } catch {}
+      }
+
+      localStorage.setItem(SAMPLE_CLEANUP_FLAG, 'true');
+    }
+  } catch (err) {
+    console.warn("Could not clean sample data:", err);
+  }
+}
+
+// Run cleanup immediately
+cleanupSampleDataFromLocalStorage();
 
 export const getStoredTransactions = (): Transaction[] => {
   try {
     const data = localStorage.getItem(TRANSACTIONS_KEY);
-    if (!data) {
-      localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(SAMPLE_TRANSACTIONS));
-      return SAMPLE_TRANSACTIONS;
-    }
-    return JSON.parse(data);
+    return data ? JSON.parse(data) : [];
   } catch {
-    return SAMPLE_TRANSACTIONS;
+    return [];
   }
 };
 
@@ -276,16 +155,16 @@ export const getStoredDailyBalances = (): Record<string, DailyBalance> => {
     return data ? JSON.parse(data) : {
       [new Date().toISOString().split('T')[0]]: {
         date: new Date().toISOString().split('T')[0],
-        openingCash: 50000,
-        openingEasyPaisa: 100000,
+        openingCash: 0,
+        openingEasyPaisa: 0,
       }
     };
   } catch {
     return {
       [new Date().toISOString().split('T')[0]]: {
         date: new Date().toISOString().split('T')[0],
-        openingCash: 50000,
-        openingEasyPaisa: 100000,
+        openingCash: 0,
+        openingEasyPaisa: 0,
       }
     };
   }
@@ -295,6 +174,10 @@ export const saveDailyBalance = (balance: DailyBalance): void => {
   const current = getStoredDailyBalances();
   current[balance.date] = balance;
   localStorage.setItem(DAILY_BALANCES_KEY, JSON.stringify(current));
+};
+
+export const saveAllDailyBalances = (balances: Record<string, DailyBalance>): void => {
+  localStorage.setItem(DAILY_BALANCES_KEY, JSON.stringify(balances));
 };
 
 export const getStoredSettings = (): AppSettings => {
@@ -328,13 +211,9 @@ export const saveSettings = (settings: AppSettings): void => {
 export const getStoredProducts = (): Product[] => {
   try {
     const data = localStorage.getItem(PRODUCTS_KEY);
-    if (!data) {
-      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(SAMPLE_PRODUCTS));
-      return SAMPLE_PRODUCTS;
-    }
-    return JSON.parse(data);
+    return data ? JSON.parse(data) : [];
   } catch {
-    return SAMPLE_PRODUCTS;
+    return [];
   }
 };
 
@@ -345,13 +224,9 @@ export const saveProducts = (products: Product[]): void => {
 export const getStoredProductSales = (): ProductSale[] => {
   try {
     const data = localStorage.getItem(PRODUCT_SALES_KEY);
-    if (!data) {
-      localStorage.setItem(PRODUCT_SALES_KEY, JSON.stringify(SAMPLE_PRODUCT_SALES));
-      return SAMPLE_PRODUCT_SALES;
-    }
-    return JSON.parse(data);
+    return data ? JSON.parse(data) : [];
   } catch {
-    return SAMPLE_PRODUCT_SALES;
+    return [];
   }
 };
 
@@ -445,56 +320,12 @@ export const getCustomerSummaries = (transactions: Transaction[]): CustomerSumma
   return Object.values(map);
 };
 
-// Sample Mobile Purchase Records
-const SAMPLE_MOBILE_PURCHASES: MobilePurchaseRecord[] = [
-  {
-    id: 'pur-1001',
-    receiptNo: 'PUR-1001',
-    date: '2026-09-02',
-    time: '07:10 AM',
-    sellerName: 'Hassnain Jaleel',
-    sellerCnic: '5440079648965',
-    sellerPhone: '03078382955',
-    sellerAddress: 'Moh Raheem Colony Jail Road Hudda Quetta',
-    sellerPhoto: undefined,
-    cnicFrontPhoto: undefined,
-    cnicBackPhoto: undefined,
-    mobileBrandModel: 'Tecno Camon 30 12/256',
-    condition: 'USED',
-    imei1: '357450680415326',
-    imei2: '357450680415326',
-    color: 'White (12/256)',
-    ramStorage: '12GB / 256GB',
-    hasBox: true,
-    hasCharger: true,
-    hasCable: true,
-    hasHandsfree: false,
-    hasWarrantyCard: false,
-    purchasePrice: 44000,
-    paymentMethod: 'CASH',
-    notes: 'Tecno Camon 30 12/256 Used Mobile Purchase',
-    createdAt: Date.now() - 1000 * 60 * 60 * 2,
-  }
-];
-
 export const getStoredMobilePurchases = (): MobilePurchaseRecord[] => {
   try {
     const data = localStorage.getItem(MOBILE_PURCHASES_KEY);
-    if (!data) {
-      localStorage.setItem(MOBILE_PURCHASES_KEY, JSON.stringify(SAMPLE_MOBILE_PURCHASES));
-      return SAMPLE_MOBILE_PURCHASES;
-    }
-    let parsed: MobilePurchaseRecord[] = JSON.parse(data);
-    // Remove old Abdul Rehman record if present
-    parsed = parsed.filter(p => p.id !== 'pur-1003' && !p.sellerName?.includes('Abdul Rehman'));
-    const hasHassnain = parsed.some(p => p.receiptNo === 'PUR-1001' || p.sellerName?.includes('Hassnain'));
-    if (!hasHassnain) {
-      parsed = [SAMPLE_MOBILE_PURCHASES[0], ...parsed];
-    }
-    localStorage.setItem(MOBILE_PURCHASES_KEY, JSON.stringify(parsed));
-    return parsed;
+    return data ? JSON.parse(data) : [];
   } catch {
-    return SAMPLE_MOBILE_PURCHASES;
+    return [];
   }
 };
 
@@ -508,39 +339,12 @@ export const saveMobilePurchases = (records: MobilePurchaseRecord[]): void => {
 
 export const SUPPLIERS_KEY = 'balal_mobiles_suppliers';
 
-const SAMPLE_SUPPLIERS: Supplier[] = [
-  {
-    id: 'sup-1',
-    name: 'Al-Madina Mobile Wholesale',
-    phone: '0300-5544332',
-    cnic: '37405-1122334-1',
-    address: 'Chowk Bazaar, Rawalpindi',
-    companyName: 'Al-Madina Traders',
-    openingBalance: 15000,
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 5,
-  },
-  {
-    id: 'sup-2',
-    name: 'Master Electronics & Mobiles',
-    phone: '0321-9988776',
-    cnic: '37405-5566778-9',
-    address: 'Main Market, Abbottabad',
-    companyName: 'Master Distributors',
-    openingBalance: 0,
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
-  }
-];
-
 export const getStoredSuppliers = (): Supplier[] => {
   try {
     const data = localStorage.getItem(SUPPLIERS_KEY);
-    if (!data) {
-      localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(SAMPLE_SUPPLIERS));
-      return SAMPLE_SUPPLIERS;
-    }
-    return JSON.parse(data);
+    return data ? JSON.parse(data) : [];
   } catch {
-    return SAMPLE_SUPPLIERS;
+    return [];
   }
 };
 

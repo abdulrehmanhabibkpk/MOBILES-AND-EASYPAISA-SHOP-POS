@@ -27,7 +27,6 @@ export function subscribeProducts(
   onUpdate: (products: Product[]) => void,
   onError?: (err: any) => void
 ) {
-  if (isQuotaExceeded) return () => {};
   const colPath = `${SHOP_PATH}/products`;
   try {
     const q = query(collection(db, colPath));
@@ -48,7 +47,6 @@ export function subscribeProducts(
 }
 
 export async function saveProductToCloud(product: Product) {
-  if (isQuotaExceeded) return;
   const docPath = `${SHOP_PATH}/products/${product.id}`;
   try {
     await setDoc(doc(db, SHOP_PATH, 'products', product.id), cleanPayload(product), { merge: true });
@@ -58,7 +56,6 @@ export async function saveProductToCloud(product: Product) {
 }
 
 export async function deleteProductFromCloud(productId: string) {
-  if (isQuotaExceeded) return;
   const docPath = `${SHOP_PATH}/products/${productId}`;
   try {
     await deleteDoc(doc(db, SHOP_PATH, 'products', productId));
@@ -72,7 +69,6 @@ export function subscribeProductSales(
   onUpdate: (sales: ProductSale[]) => void,
   onError?: (err: any) => void
 ) {
-  if (isQuotaExceeded) return () => {};
   const colPath = `${SHOP_PATH}/productSales`;
   try {
     const q = query(collection(db, colPath));
@@ -94,7 +90,6 @@ export function subscribeProductSales(
 }
 
 export async function saveProductSaleToCloud(sale: ProductSale) {
-  if (isQuotaExceeded) return;
   const docPath = `${SHOP_PATH}/productSales/${sale.id}`;
   try {
     await setDoc(doc(db, SHOP_PATH, 'productSales', sale.id), cleanPayload(sale), { merge: true });
@@ -108,7 +103,6 @@ export function subscribeTransactions(
   onUpdate: (transactions: Transaction[]) => void,
   onError?: (err: any) => void
 ) {
-  if (isQuotaExceeded) return () => {};
   const colPath = `${SHOP_PATH}/transactions`;
   try {
     const q = query(collection(db, colPath));
@@ -130,7 +124,6 @@ export function subscribeTransactions(
 }
 
 export async function saveTransactionToCloud(trx: Transaction) {
-  if (isQuotaExceeded) return;
   const docPath = `${SHOP_PATH}/transactions/${trx.id}`;
   try {
     await setDoc(doc(db, SHOP_PATH, 'transactions', trx.id), cleanPayload(trx), { merge: true });
@@ -140,7 +133,6 @@ export async function saveTransactionToCloud(trx: Transaction) {
 }
 
 export async function deleteTransactionFromCloud(trxId: string) {
-  if (isQuotaExceeded) return;
   const docPath = `${SHOP_PATH}/transactions/${trxId}`;
   try {
     await deleteDoc(doc(db, SHOP_PATH, 'transactions', trxId));
@@ -154,7 +146,6 @@ export function subscribeDailyBalances(
   onUpdate: (balances: Record<string, DailyBalance>) => void,
   onError?: (err: any) => void
 ) {
-  if (isQuotaExceeded) return () => {};
   const colPath = `${SHOP_PATH}/dailyBalances`;
   try {
     const q = query(collection(db, colPath));
@@ -178,7 +169,6 @@ export function subscribeDailyBalances(
 }
 
 export async function saveDailyBalanceToCloud(balance: DailyBalance) {
-  if (isQuotaExceeded) return;
   const docPath = `${SHOP_PATH}/dailyBalances/${balance.date}`;
   try {
     await setDoc(doc(db, SHOP_PATH, 'dailyBalances', balance.date), cleanPayload(balance), { merge: true });
@@ -192,7 +182,6 @@ export function subscribeAppSettings(
   onUpdate: (settings: AppSettings) => void,
   onError?: (err: any) => void
 ) {
-  if (isQuotaExceeded) return () => {};
   const docPath = `${SHOP_PATH}/appSettings/global`;
   try {
     return onSnapshot(doc(db, SHOP_PATH, 'appSettings', 'global'), (docSnap) => {
@@ -210,7 +199,6 @@ export function subscribeAppSettings(
 }
 
 export async function saveAppSettingsToCloud(settings: AppSettings) {
-  if (isQuotaExceeded) return;
   const docPath = `${SHOP_PATH}/appSettings/global`;
   try {
     await setDoc(doc(db, SHOP_PATH, 'appSettings', 'global'), cleanPayload(settings), { merge: true });
@@ -224,7 +212,6 @@ export function subscribeMobilePurchases(
   onUpdate: (purchases: MobilePurchaseRecord[]) => void,
   onError?: (err: any) => void
 ) {
-  if (isQuotaExceeded) return () => {};
   const colPath = `${SHOP_PATH}/mobilePurchases`;
   try {
     const q = query(collection(db, colPath));
@@ -245,7 +232,6 @@ export function subscribeMobilePurchases(
 }
 
 export async function saveMobilePurchaseToCloud(purchase: MobilePurchaseRecord) {
-  if (isQuotaExceeded) return;
   const docPath = `${SHOP_PATH}/mobilePurchases/${purchase.id}`;
   try {
     await setDoc(doc(db, SHOP_PATH, 'mobilePurchases', purchase.id), cleanPayload(purchase), { merge: true });
@@ -255,7 +241,6 @@ export async function saveMobilePurchaseToCloud(purchase: MobilePurchaseRecord) 
 }
 
 export async function deleteMobilePurchaseFromCloud(purchaseId: string) {
-  if (isQuotaExceeded) return;
   const docPath = `${SHOP_PATH}/mobilePurchases/${purchaseId}`;
   try {
     await deleteDoc(doc(db, SHOP_PATH, 'mobilePurchases', purchaseId));
@@ -269,7 +254,6 @@ export function subscribeSuppliers(
   onUpdate: (suppliers: Supplier[]) => void,
   onError?: (err: any) => void
 ) {
-  if (isQuotaExceeded) return () => {};
   const colPath = `${SHOP_PATH}/suppliers`;
   try {
     const q = query(collection(db, colPath));
@@ -290,7 +274,6 @@ export function subscribeSuppliers(
 }
 
 export async function saveSupplierToCloud(supplier: Supplier) {
-  if (isQuotaExceeded) return;
   const docPath = `${SHOP_PATH}/suppliers/${supplier.id}`;
   try {
     await setDoc(doc(db, SHOP_PATH, 'suppliers', supplier.id), cleanPayload(supplier), { merge: true });
@@ -300,7 +283,6 @@ export async function saveSupplierToCloud(supplier: Supplier) {
 }
 
 export async function deleteSupplierFromCloud(supplierId: string) {
-  if (isQuotaExceeded) return;
   const docPath = `${SHOP_PATH}/suppliers/${supplierId}`;
   try {
     await deleteDoc(doc(db, SHOP_PATH, 'suppliers', supplierId));
