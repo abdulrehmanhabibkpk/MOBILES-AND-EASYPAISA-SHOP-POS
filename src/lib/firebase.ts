@@ -25,27 +25,73 @@ import firebaseConfig from '../../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore with persistent IndexedDB local cache for fast offline sync and quota savings
+const dbId = (firebaseConfig as any).firestoreDatabaseId;
 let firestoreDb;
 try {
-  firestoreDb = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
-    })
-  }, firebaseConfig.firestoreDatabaseId);
+  firestoreDb = dbId 
+    ? initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager()
+        })
+      }, dbId)
+    : initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager()
+        })
+      });
 } catch (e) {
-  firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+  firestoreDb = dbId ? getFirestore(app, dbId) : getFirestore(app);
 }
 
 export const db = firestoreDb;
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
+// Add Workspace scopes for Google Drive backup & storage
+googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
+googleProvider.addScope('https://www.googleapis.com/auth/drive.appdata');
+
+// In-memory cached access token for Google Drive APIs (strictly in memory)
+let cachedDriveAccessToken: string | null = null;
+let isSigningInWithDrive = false;
+
+export function getDriveCachedToken(): string | null {
+  return cachedDriveAccessToken;
+}
+
+export function setDriveCachedToken(token: string | null) {
+  cachedDriveAccessToken = token;
+}
+
 export async function loginWithGoogle() {
   try {
-    return await signInWithPopup(auth, googleProvider);
+    isSigningInWithDrive = true;
+    const result = await signInWithPopup(auth, googleProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (credential?.accessToken) {
+      cachedDriveAccessToken = credential.accessToken;
+    }
+    return result;
   } catch (error) {
     console.error('Google Sign-In Error:', error);
     throw error;
+  } finally {
+    isSigningInWithDrive = false;
+  }
+}
+
+export async function connectGoogleDriveAccount(): Promise<{ user: User; accessToken: string }> {
+  try {
+    isSigningInWithDrive = true;
+    const result = await signInWithPopup(auth, googleProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (!credential?.accessToken) {
+      throw new Error('Google Drive access token not returned by provider.');
+    }
+    cachedDriveAccessToken = credential.accessToken;
+    return { user: result.user, accessToken: cachedDriveAccessToken };
+  } finally {
+    isSigningInWithDrive = false;
   }
 }
 
@@ -112,6 +158,7 @@ export async function createAndSendVerificationEmail(email: string, pass: string
 
 export async function logoutUser() {
   try {
+    cachedDriveAccessToken = null;
     await firebaseSignOut(auth);
   } catch (error) {
     console.error('Logout Error:', error);

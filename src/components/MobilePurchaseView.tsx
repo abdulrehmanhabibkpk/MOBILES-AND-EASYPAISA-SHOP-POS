@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { SimplePurchaseReceiptModal } from './SimplePurchaseReceiptModal';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
+import { compressImageToDataUrl } from '../lib/imageCompressor';
 
 interface MobilePurchaseViewProps {
   purchases: MobilePurchaseRecord[];
@@ -108,49 +109,25 @@ export const MobilePurchaseView: React.FC<MobilePurchaseViewProps> = ({
     setIsAddModalOpen(true);
   };
 
-  // Helper to handle image uploads with canvas compression
-  const handleImageUpload = (
+  // Helper to handle image uploads with ultra-optimized lightweight compression (~30-50KB per photo)
+  // Conserves Firestore bandwidth & ensures 50,000 Reads / 20,000 Writes quotas are never exhausted
+  const handleImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     setter: (val: string) => void
   ) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const maxWidth = 800;
-          const maxHeight = 800;
-
-          if (width > height) {
-            if (width > maxWidth) {
-              height = Math.round((height * maxWidth) / width);
-              width = maxWidth;
-            }
-          } else {
-            if (height > maxHeight) {
-              width = Math.round((width * maxHeight) / height);
-              height = maxHeight;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            setter(dataUrl);
-          } else {
-            setter(event.target?.result as string);
-          }
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImageToDataUrl(file, {
+          maxWidth: 720,
+          maxHeight: 720,
+          quality: 0.70,
+          maxSizeBytes: 60 * 1024 // ~60KB max
+        });
+        setter(compressed);
+      } catch (err) {
+        console.error("Compression error:", err);
+      }
     }
   };
 

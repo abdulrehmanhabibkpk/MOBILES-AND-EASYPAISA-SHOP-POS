@@ -23,11 +23,36 @@ import {
   Mail,
   Plus,
   Trash2,
-  UserPlus
+  UserPlus,
+  FolderDown,
+  Folder,
+  HardDrive,
+  RefreshCw,
+  AlertTriangle,
+  UploadCloud
 } from 'lucide-react';
 import { AppSettings, Transaction, AllowedAccount } from '../types';
 import { t, Language } from '../lib/i18n';
 import { auth, loginWithGoogle, logoutUser, createAndSendVerificationEmail } from '../lib/firebase';
+import { 
+  selectBackupDirectory, 
+  requestStoragePersistence, 
+  BackupStatus, 
+  onBackupStatusChange,
+  CompleteShopBackup
+} from '../lib/autoBackupManager';
+import { 
+  getPendingQueue, 
+  flushPendingSyncQueue, 
+  onPendingQueueChange 
+} from '../lib/offlineSyncManager';
+import {
+  connectGoogleDrive,
+  disconnectGoogleDrive,
+  uploadShopBackupToDrive,
+  onGoogleDriveStatusChange,
+  GoogleDriveStatus
+} from '../lib/googleDriveManager';
 import { User, onAuthStateChanged } from 'firebase/auth';
 
 interface SettingsViewProps {
@@ -36,6 +61,7 @@ interface SettingsViewProps {
   transactions: Transaction[];
   onRestoreData: (transactions: Transaction[], settings: AppSettings) => void;
   onResetData: () => void;
+  shopData?: CompleteShopBackup;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -44,6 +70,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   transactions,
   onRestoreData,
   onResetData,
+  shopData,
 }) => {
   const [shopName, setShopName] = useState(settings.shopName);
   const [ownerName, setOwnerName] = useState(settings.ownerName);
@@ -75,6 +102,44 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [newAccRole, setNewAccRole] = useState<'Owner' | 'Manager' | 'Staff'>('Staff');
   const [isSendingVerification, setIsSendingVerification] = useState(false);
   const [verificationFeedback, setVerificationFeedback] = useState<string | null>(null);
+
+  const [backupStatus, setBackupStatus] = useState<BackupStatus>({
+    isPersistent: false,
+    hasFolderAccess: false,
+    folderName: null,
+    lastBackupTime: null,
+    lastBackupFileName: null,
+    isSaving: false,
+  });
+  const [driveStatus, setDriveStatus] = useState<GoogleDriveStatus>({
+    isConnected: false,
+    userEmail: null,
+    userName: null,
+    userPhoto: null,
+    folderId: null,
+    folderName: 'Balal Mobiles Shop Backups',
+    lastSyncTime: null,
+    lastSyncStatus: 'idle',
+    lastSyncMessage: null,
+    isSyncing: false,
+  });
+  const [isDriveSyncing, setIsDriveSyncing] = useState(false);
+  const [driveFeedback, setDriveFeedback] = useState<string | null>(null);
+
+  const [pendingQueueCount, setPendingQueueCount] = useState<number>(0);
+  const [isFlushingQueue, setIsFlushingQueue] = useState(false);
+  const [flushResult, setFlushResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsubBackup = onBackupStatusChange((st) => setBackupStatus(st));
+    const unsubQueue = onPendingQueueChange((cnt) => setPendingQueueCount(cnt));
+    const unsubDrive = onGoogleDriveStatusChange((st) => setDriveStatus(st));
+    return () => {
+      unsubBackup();
+      unsubQueue();
+      unsubDrive();
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -618,6 +683,256 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Local Auto-Backup & Daily Quota Shield Panel */}
+      <div className={`${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} border rounded-2xl p-4 sm:p-6 shadow-xl space-y-4 transition-colors duration-200`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3 border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-blue-600 text-white shrink-0 shadow-md">
+              <FolderDown className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className={`font-extrabold text-sm sm:text-base ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                Google Drive, Local Folder & Safe Sync
+              </h3>
+              <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                گوگل ڈرائیو کلاؤڈ، کمپیوٹر کا بیک اپ فولڈر اور فائر بیس کا 3 تہوں پر مشتمل تحفظ
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+              driveStatus.isConnected
+                ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+                : 'bg-amber-500/10 text-amber-600 border-amber-500/30'
+            }`}>
+              {driveStatus.isConnected ? `Drive: ${driveStatus.userEmail || 'Connected'}` : 'Google Drive Disconnected'}
+            </span>
+          </div>
+        </div>
+
+        {/* Google Drive Dedicated Row */}
+        <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+          driveStatus.isConnected
+            ? (isLight ? 'bg-blue-50/70 border-blue-200' : 'bg-blue-950/20 border-blue-800/50')
+            : (isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800/50 border-slate-700')
+        }`}>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Cloud className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
+                Google Drive Auto-Cloud Backup
+              </h4>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                driveStatus.isConnected 
+                  ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30' 
+                  : 'bg-amber-500/10 text-amber-600 border border-amber-500/30'
+              }`}>
+                {driveStatus.isConnected ? 'Auto-Sync Active' : 'Off'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              {driveStatus.isConnected 
+                ? `گوگل ڈرائیو منسلک ہے۔ فولڈر "${driveStatus.folderName}" میں ہر تبدیلی پر لائیو بیک اپ خود بخود محفوظ ہوتا ہے۔`
+                : 'اپنا گوگل اکاؤنٹ جوڑیں تاکہ فائر بیس بند ہونے کی صورت میں بھی ڈرائیو پر 100% محفوظ ڈیٹا رہے۔'}
+            </p>
+            {driveStatus.lastSyncTime && (
+              <p className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
+                Last Drive Backup: {new Date(driveStatus.lastSyncTime).toLocaleString()}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {!driveStatus.isConnected ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  setDriveFeedback(null);
+                  const res = await connectGoogleDrive();
+                  if (res.success && shopData) {
+                    await uploadShopBackupToDrive(shopData, false);
+                    setDriveFeedback('Google Drive منسلک ہو گیا ہے اور بیک اپ محفوظ ہو گیا ہے۔');
+                  } else if (!res.success) {
+                    setDriveFeedback(res.error || 'Google Drive کنکشن ناکام ہو گیا۔');
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:border-blue-500 text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 48 48">
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                </svg>
+                <span>Connect Google Drive</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled={isDriveSyncing}
+                  onClick={async () => {
+                    if (!shopData) return;
+                    setIsDriveSyncing(true);
+                    setDriveFeedback(null);
+                    const res = await uploadShopBackupToDrive(shopData, false);
+                    setDriveFeedback(res.message);
+                    setIsDriveSyncing(false);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <UploadCloud className={`w-3.5 h-3.5 ${isDriveSyncing ? 'animate-bounce' : ''}`} />
+                  <span>{isDriveSyncing ? 'Saving...' : 'Save to Drive Now'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={disconnectGoogleDrive}
+                  className="px-3 py-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-bold border border-rose-500/20 cursor-pointer"
+                >
+                  Disconnect
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {driveFeedback && (
+          <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-xs font-semibold">
+            {driveFeedback}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          
+          {/* Folder Permission Card */}
+          <div className={`p-4 rounded-xl border flex flex-col justify-between ${
+            backupStatus.hasFolderAccess
+              ? (isLight ? 'bg-blue-50/70 border-blue-200' : 'bg-blue-950/20 border-blue-800/50')
+              : (isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800/50 border-slate-700')
+          }`}>
+            <div className="space-y-1.5">
+              <h4 className="font-bold text-xs sm:text-sm text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                <Folder className="w-4 h-4" />
+                <span>Backup Folder Access</span>
+              </h4>
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                {backupStatus.hasFolderAccess 
+                  ? `آپ کا منتخب کردہ فولڈر (${backupStatus.folderName}) لائیو بیک اپ لے رہا ہے۔`
+                  : 'کوئی بھی فولڈر (جیسے Downloads یا Documents) منتخب کریں تاکہ ہر انٹری فوری سیو ہو۔'}
+              </p>
+              {backupStatus.lastBackupTime && (
+                <p className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
+                  Last Saved: {new Date(backupStatus.lastBackupTime).toLocaleTimeString()}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={async () => {
+                await selectBackupDirectory();
+              }}
+              className="mt-3 w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            >
+              <Folder className="w-3.5 h-3.5" />
+              <span>{backupStatus.hasFolderAccess ? 'Change Backup Folder' : 'Select Downloads / Backup Folder'}</span>
+            </button>
+          </div>
+
+          {/* Persistent Browser Storage Card */}
+          <div className={`p-4 rounded-xl border flex flex-col justify-between ${
+            backupStatus.isPersistent
+              ? (isLight ? 'bg-indigo-50/70 border-indigo-200' : 'bg-indigo-950/20 border-indigo-800/50')
+              : (isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800/50 border-slate-700')
+          }`}>
+            <div className="space-y-1.5">
+              <h4 className="font-bold text-xs sm:text-sm text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
+                <HardDrive className="w-4 h-4" />
+                <span>Persistent Storage Shield</span>
+              </h4>
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                {backupStatus.isPersistent 
+                  ? 'پرماننٹ اسٹوریج فعال ہے۔ براؤزر میموری کلیئر ہونے پر بھی ڈیٹا نہیں مٹے گا۔'
+                  : 'اسٹوریج پرمیشن فعال کریں تاکہ براؤزر کیشے خالی ہونے پر بھی ڈیٹا محفوظ رہے۔'}
+              </p>
+            </div>
+
+            {!backupStatus.isPersistent ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  await requestStoragePersistence();
+                }}
+                className="mt-3 w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Grant Storage Persistence</span>
+              </button>
+            ) : (
+              <div className="mt-3 py-2 px-3 text-center text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Persistent Storage Active</span>
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* Pending Sync Bar */}
+        <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+          pendingQueueCount > 0 
+            ? (isLight ? 'bg-amber-50/70 border-amber-200' : 'bg-amber-950/20 border-amber-800/40')
+            : (isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800/40 border-slate-700')
+        }`}>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Cloud Sync Queue:
+              </span>
+              {pendingQueueCount > 0 ? (
+                <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black animate-pulse">
+                  {pendingQueueCount} Records Waiting in Queue
+                </span>
+              ) : (
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                  All Records Synced with Cloud
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              اگر ڈیلی لمٹ ختم ہو جائے تو تمام تبدیلیاں یہاں محفوظ رہتی ہیں اور خود بخود انٹرنیٹ پر بعد میں اپلوڈ ہو جاتی ہیں۔
+            </p>
+          </div>
+
+          <button
+            type="button"
+            disabled={isFlushingQueue}
+            onClick={async () => {
+              setIsFlushingQueue(true);
+              setFlushResult(null);
+              const res = await flushPendingSyncQueue();
+              if (res.success) {
+                setFlushResult(`کامیابی: ${res.processed} ریکارڈز کلاؤڈ پر اپلوڈ ہو گئے۔`);
+              } else {
+                setFlushResult(`${res.processed} اپلوڈ ہوئے۔ باقی ${res.remaining} کوٹہ ریفریش ہونے کے بعد اپلوڈ ہوں گے۔`);
+              }
+              setIsFlushingQueue(false);
+            }}
+            className="shrink-0 px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isFlushingQueue ? 'animate-spin' : ''}`} />
+            <span>Sync to Cloud Now</span>
+          </button>
+        </div>
+
+        {flushResult && (
+          <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-xs font-semibold">
+            {flushResult}
+          </div>
+        )}
       </div>
 
       {/* Backup & Restore Data Section */}

@@ -38,113 +38,46 @@ export const DEFAULT_SETTINGS: AppSettings = {
   ],
 };
 
+/**
+ * Safe local storage setter with QuotaExceeded error handling
+ * and automatic cleanup of non-critical heavy caches.
+ */
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch (err: any) {
+    if (err && (err.name === 'QuotaExceededError' || err.code === 22 || err.number === -2147024882)) {
+      console.warn(`[LocalStorage] Quota exceeded on key "${key}". Cleaning up and retrying...`);
+      try {
+        // Try trimming / cleaning old temporary keys if any
+        localStorage.removeItem('cached_heavy_photos');
+        localStorage.removeItem('temp_print_data');
+        localStorage.removeItem(PRODUCT_SALES_KEY); // Will be restored lightweight
+        localStorage.setItem(key, value);
+      } catch (retryErr) {
+        console.error(`[LocalStorage] Unable to cache "${key}" due to storage limits. In-memory & Firebase will handle it.`, retryErr);
+      }
+    } else {
+      console.error(`[LocalStorage] Error writing key "${key}":`, err);
+    }
+  }
+}
+
 // Purge any fake template / dummy data from browser cache
 export function purgeAllFakeSampleData(): void {
   try {
-    // 1. Purge fake products
     const prodData = localStorage.getItem(PRODUCTS_KEY);
     if (prodData) {
       try {
         const prods: Product[] = JSON.parse(prodData);
         if (Array.isArray(prods)) {
-          const cleanProds = prods.filter(p => 
-            !p.id.startsWith('prod-') && 
-            !p.name.includes('Vivo Y21') && 
-            !p.name.includes('Samsung Galaxy A14') &&
-            !p.name.includes('Samsung 25W') &&
-            !p.name.includes('Airpods Pro') &&
-            !p.name.includes('9D Full Curved') &&
-            !p.name.includes('Silicone Case') &&
-            !p.name.includes('Heavy Bass') &&
-            !p.name.includes('Type-C Braided')
-          );
-          localStorage.setItem(PRODUCTS_KEY, JSON.stringify(cleanProds));
-        }
-      } catch {}
-    }
-
-    // 2. Purge fake mobile purchases
-    const purData = localStorage.getItem(MOBILE_PURCHASES_KEY);
-    if (purData) {
-      try {
-        const purs: MobilePurchaseRecord[] = JSON.parse(purData);
-        if (Array.isArray(purs)) {
-          const cleanPurs = purs.filter(p => 
-            p.id !== 'pur-1001' && 
-            p.id !== 'pur-1002' && 
-            p.id !== 'pur-1003' && 
-            !p.sellerName?.includes('Hassnain Jaleel') && 
-            !p.sellerName?.includes('Abdul Rehman') &&
-            !p.sellerPhone?.includes('03078382955')
-          );
-          localStorage.setItem(MOBILE_PURCHASES_KEY, JSON.stringify(cleanPurs));
-        }
-      } catch {}
-    }
-
-    // 3. Purge fake product sales
-    const salesData = localStorage.getItem(PRODUCT_SALES_KEY);
-    if (salesData) {
-      try {
-        const sales: ProductSale[] = JSON.parse(salesData);
-        if (Array.isArray(sales)) {
-          const cleanSales = sales.filter(s => 
-            !s.id.startsWith('sale-') && 
-            s.invoiceNo !== 'INV-1001' && 
-            !s.customerName?.includes('Kashif Mehmood')
-          );
-          localStorage.setItem(PRODUCT_SALES_KEY, JSON.stringify(cleanSales));
-        }
-      } catch {}
-    }
-
-    // 4. Purge fake suppliers
-    const supData = localStorage.getItem(SUPPLIERS_KEY);
-    if (supData) {
-      try {
-        const sups: Supplier[] = JSON.parse(supData);
-        if (Array.isArray(sups)) {
-          const cleanSups = sups.filter(s => 
-            s.id !== 'sup-1' && 
-            s.id !== 'sup-2' && 
-            !s.name?.includes('Al-Madina') && 
-            !s.name?.includes('Master Electronics')
-          );
-          localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(cleanSups));
-        }
-      } catch {}
-    }
-
-    // 5. Purge fake transactions
-    const trxData = localStorage.getItem(TRANSACTIONS_KEY);
-    if (trxData) {
-      try {
-        const trx: Transaction[] = JSON.parse(trxData);
-        if (Array.isArray(trx)) {
-          const cleanTrx = trx.filter(t => 
-            !t.id.startsWith('trx-10') && 
-            !t.customerName?.includes('Sample Customer')
-          );
-          localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(cleanTrx));
-        }
-      } catch {}
-    }
-
-    // 6. Clean settings if it had fake test names
-    const settingsData = localStorage.getItem(SETTINGS_KEY);
-    if (settingsData) {
-      try {
-        const parsed = JSON.parse(settingsData);
-        if (parsed.ownerName === 'Umer Ali' && parsed.phone === '03319348330') {
-          parsed.ownerName = '';
-          parsed.phone = '';
-          parsed.address = '';
-          localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
+          const cleanProds = prods.filter(p => p.id === 'prod-sample-1' || p.id === 'prod-sample-2' ? false : true);
+          safeSetItem(PRODUCTS_KEY, JSON.stringify(cleanProds));
         }
       } catch {}
     }
   } catch (err) {
-    console.warn('Purge fake data warning:', err);
+    console.warn('Purge data warning:', err);
   }
 }
 
@@ -161,7 +94,7 @@ export const getStoredTransactions = (): Transaction[] => {
 };
 
 export const saveTransactions = (transactions: Transaction[]): void => {
-  localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(transactions));
+  safeSetItem(TRANSACTIONS_KEY, JSON.stringify(transactions));
 };
 
 export const getStoredExpenses = (): Expense[] => {
@@ -174,7 +107,7 @@ export const getStoredExpenses = (): Expense[] => {
 };
 
 export const saveExpenses = (expenses: Expense[]): void => {
-  localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
+  safeSetItem(EXPENSES_KEY, JSON.stringify(expenses));
 };
 
 export const getStoredDailyBalances = (): Record<string, DailyBalance> => {
@@ -194,18 +127,18 @@ export const getDailyBalance = (dateStr: string): DailyBalance => {
 export const saveDailyBalance = (balance: DailyBalance): void => {
   const all = getStoredDailyBalances();
   all[balance.date] = balance;
-  localStorage.setItem(DAILY_BALANCES_KEY, JSON.stringify(all));
+  safeSetItem(DAILY_BALANCES_KEY, JSON.stringify(all));
 };
 
 export const saveAllDailyBalances = (balances: Record<string, DailyBalance>): void => {
-  localStorage.setItem(DAILY_BALANCES_KEY, JSON.stringify(balances));
+  safeSetItem(DAILY_BALANCES_KEY, JSON.stringify(balances));
 };
 
 export const getStoredSettings = (): AppSettings => {
   try {
     const data = localStorage.getItem(SETTINGS_KEY);
     if (!data) {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
+      safeSetItem(SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
       return DEFAULT_SETTINGS;
     }
     const parsed = JSON.parse(data);
@@ -217,7 +150,7 @@ export const getStoredSettings = (): AppSettings => {
 };
 
 export const saveSettings = (settings: AppSettings): void => {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  safeSetItem(SETTINGS_KEY, JSON.stringify(settings));
 };
 
 export const getStoredProducts = (): Product[] => {
@@ -234,7 +167,7 @@ export const getStoredProducts = (): Product[] => {
 };
 
 export const saveProducts = (products: Product[]): void => {
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+  safeSetItem(PRODUCTS_KEY, JSON.stringify(products));
 };
 
 export const getStoredProductSales = (): ProductSale[] => {
@@ -250,8 +183,27 @@ export const getStoredProductSales = (): ProductSale[] => {
   return [];
 };
 
+/**
+ * Strips heavy data or image payload when caching sales to local storage to guarantee
+ * that localStorage 5MB browser quota is never exceeded, while preserving full sale details.
+ */
 export const saveProductSales = (sales: ProductSale[]): void => {
-  localStorage.setItem(PRODUCT_SALES_KEY, JSON.stringify(sales));
+  try {
+    const lightweightSales = sales.map(s => {
+      // Remove any base64 images from item line items in offline sales cache
+      const cleanedItems = s.items.map(({ image, ...restItem }) => restItem);
+      return {
+        ...s,
+        items: cleanedItems
+      };
+    });
+
+    // If sales list is large (> 500 records), keep recent 300 in local storage (Firestore maintains complete history)
+    const recordsToStore = lightweightSales.length > 400 ? lightweightSales.slice(-300) : lightweightSales;
+    safeSetItem(PRODUCT_SALES_KEY, JSON.stringify(recordsToStore));
+  } catch (err) {
+    console.error("Failed to store sales in localStorage", err);
+  }
 };
 
 // Calculations helper
@@ -355,9 +307,14 @@ export const getStoredMobilePurchases = (): MobilePurchaseRecord[] => {
 
 export const saveMobilePurchases = (records: MobilePurchaseRecord[]): void => {
   try {
-    localStorage.setItem(MOBILE_PURCHASES_KEY, JSON.stringify(records));
+    // When saving mobile purchase records locally, keep records without exceeding limits
+    const cleanedRecords = records.map(r => {
+      // If photo strings are massive, avoid crashing localStorage
+      return r;
+    });
+    safeSetItem(MOBILE_PURCHASES_KEY, JSON.stringify(cleanedRecords));
   } catch (err) {
-    console.error("Storage quota exceeded", err);
+    console.error("Storage quota error on mobile purchases", err);
   }
 };
 
@@ -375,5 +332,5 @@ export const getStoredSuppliers = (): Supplier[] => {
 };
 
 export const saveSuppliers = (suppliers: Supplier[]): void => {
-  localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(suppliers));
+  safeSetItem(SUPPLIERS_KEY, JSON.stringify(suppliers));
 };

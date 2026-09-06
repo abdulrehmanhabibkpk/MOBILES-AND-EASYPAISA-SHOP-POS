@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Lock, 
@@ -22,10 +22,17 @@ import {
   QrCode,
   Calendar,
   Wallet,
-  Folder
+  Folder,
+  FolderDown,
+  CloudUpload,
+  Cloud,
+  HardDrive
 } from 'lucide-react';
 import { AppSettings } from '../types';
 import { CashCalculatorModal } from './CashCalculatorModal';
+import { onBackupStatusChange, BackupStatus } from '../lib/autoBackupManager';
+import { onPendingQueueChange } from '../lib/offlineSyncManager';
+import { onGoogleDriveStatusChange, GoogleDriveStatus } from '../lib/googleDriveManager';
 import { t } from '../lib/i18n';
 
 export type NavTab = 'dashboard' | 'pos' | 'inventory' | 'purchases' | 'suppliers' | 'stock-ledger' | 'ledger' | 'reports' | 'customers' | 'barcodes' | 'settings' | 'filemanager' | 'sales';
@@ -40,6 +47,7 @@ interface NavbarProps {
   onToggleTheme: () => void;
   onOpenNewTransaction: () => void;
   onOpenOpeningBalance: () => void;
+  onOpenAutoBackupModal?: () => void;
   onLogout?: () => void;
   loading?: boolean;
 }
@@ -54,12 +62,45 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleTheme,
   onOpenNewTransaction,
   onOpenOpeningBalance,
+  onOpenAutoBackupModal,
   onLogout,
   loading = false,
 }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerSearch, setDrawerSearch] = useState('');
   const [isCashCalcOpen, setIsCashCalcOpen] = useState(false);
+  const [backupStatus, setBackupStatus] = useState<BackupStatus>({
+    isPersistent: false,
+    hasFolderAccess: false,
+    folderName: null,
+    lastBackupTime: null,
+    lastBackupFileName: null,
+    isSaving: false,
+  });
+  const [driveStatus, setDriveStatus] = useState<GoogleDriveStatus>({
+    isConnected: false,
+    userEmail: null,
+    userName: null,
+    userPhoto: null,
+    folderId: null,
+    folderName: 'Balal Mobiles Shop Backups',
+    lastSyncTime: null,
+    lastSyncStatus: 'idle',
+    lastSyncMessage: null,
+    isSyncing: false,
+  });
+  const [pendingQueueCount, setPendingQueueCount] = useState<number>(0);
+
+  useEffect(() => {
+    const unsubBackup = onBackupStatusChange((st) => setBackupStatus(st));
+    const unsubQueue = onPendingQueueChange((cnt) => setPendingQueueCount(cnt));
+    const unsubDrive = onGoogleDriveStatusChange((st) => setDriveStatus(st));
+    return () => {
+      unsubBackup();
+      unsubQueue();
+      unsubDrive();
+    };
+  }, []);
 
   const isLight = settings.theme === 'light';
 
@@ -126,6 +167,35 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Quick Actions & Utilities - Clean Responsive Layout */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           
+          {/* Storage & Auto-Backup Status Button */}
+          <button
+            onClick={onOpenAutoBackupModal}
+            className={`h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl border flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0 ${
+              driveStatus.isConnected || backupStatus.hasFolderAccess
+                ? (isLight
+                    ? 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
+                    : 'bg-blue-950/40 hover:bg-blue-900/60 text-blue-400 border-blue-800/60')
+                : (isLight
+                    ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
+                    : 'bg-amber-950/40 hover:bg-amber-900/60 text-amber-400 border-amber-800/60')
+            }`}
+            title="Google Drive، لوکل اسٹوریج اور خودکار بیک اپ"
+          >
+            {driveStatus.isConnected ? (
+              <Cloud className="w-4 h-4 text-emerald-500" />
+            ) : (
+              <FolderDown className="w-4 h-4" />
+            )}
+            <span className="hidden xl:inline text-[11px] font-bold">
+              {driveStatus.isConnected ? 'Drive Sync' : backupStatus.hasFolderAccess ? 'Auto-Save' : 'Backup'}
+            </span>
+            {pendingQueueCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[9px] font-black animate-pulse">
+                {pendingQueueCount}
+              </span>
+            )}
+          </button>
+
           {/* Daily Cash Notes Calculator Button */}
           <button
             onClick={() => setIsCashCalcOpen(true)}

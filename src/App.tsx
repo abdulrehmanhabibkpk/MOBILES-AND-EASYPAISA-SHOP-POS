@@ -29,6 +29,7 @@ import {
   subscribeMobilePurchases,
   subscribeSuppliers,
   saveProductToCloud,
+  batchSaveProductsToCloud,
   deleteProductFromCloud,
   saveProductSaleToCloud,
   saveTransactionToCloud,
@@ -40,6 +41,7 @@ import {
   saveSupplierToCloud,
   deleteSupplierFromCloud
 } from './lib/firebaseSync';
+import { ParsedStockItem } from './lib/stockDataHandler';
 
 import { LockScreen } from './components/LockScreen';
 import { LoginScreen } from './components/LoginScreen';
@@ -62,6 +64,17 @@ import { ExpenseModal } from './components/ExpenseModal';
 import { OpeningBalanceModal } from './components/OpeningBalanceModal';
 import { ReceiptVoucherModal } from './components/ReceiptVoucherModal';
 import { ProductInvoiceModal } from './components/ProductInvoiceModal';
+import { StorageAutoBackupModal } from './components/StorageAutoBackupModal';
+import { 
+  initAutoBackupManager, 
+  requestStoragePersistence, 
+  scheduleAutoBackup, 
+  CompleteShopBackup 
+} from './lib/autoBackupManager';
+import { 
+  initGoogleDriveManager, 
+  scheduleGoogleDriveAutoBackup 
+} from './lib/googleDriveManager';
 import { Footer } from './components/Footer';
 import { GlobalLoadingSkeleton } from './components/GlobalLoadingSkeleton';
 import { LoadingOverlay } from './components/LoadingOverlay';
@@ -90,6 +103,7 @@ export default function App() {
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isOpeningModalOpen, setIsOpeningModalOpen] = useState(false);
   const [viewVoucherTrx, setViewVoucherTrx] = useState<Transaction | null>(null);
+  const [isStorageModalOpen, setIsStorageModalOpen] = useState<boolean>(false);
 
   // Today's date string
   const todayStr = new Date().toISOString().split('T')[0];
@@ -128,45 +142,40 @@ export default function App() {
     const unsubProducts = subscribeProducts((remoteProducts) => {
       markStreamLoaded();
       if (Array.isArray(remoteProducts)) {
-        const real = remoteProducts.filter(p => !p.id.startsWith('prod-') && !p.name.includes('Vivo Y21') && !p.name.includes('Samsung Galaxy A14'));
-        setProducts(real);
-        saveProducts(real);
+        setProducts(remoteProducts);
+        saveProducts(remoteProducts);
       }
     }, () => markStreamLoaded());
 
     const unsubSales = subscribeProductSales((remoteSales) => {
       markStreamLoaded();
       if (Array.isArray(remoteSales)) {
-        const real = remoteSales.filter(s => !s.id.startsWith('sale-') && s.invoiceNo !== 'INV-1001' && !s.customerName?.includes('Kashif Mehmood'));
-        setProductSales(real);
-        saveProductSales(real);
+        setProductSales(remoteSales);
+        saveProductSales(remoteSales);
       }
     }, () => markStreamLoaded());
 
     const unsubPurchases = subscribeMobilePurchases((remotePurchases) => {
       markStreamLoaded();
       if (Array.isArray(remotePurchases)) {
-        const real = remotePurchases.filter(p => p.id !== 'pur-1001' && p.id !== 'pur-1002' && p.id !== 'pur-1003' && !p.sellerName?.includes('Hassnain Jaleel') && !p.sellerName?.includes('Abdul Rehman'));
-        setMobilePurchases(real);
-        saveMobilePurchases(real);
+        setMobilePurchases(remotePurchases);
+        saveMobilePurchases(remotePurchases);
       }
     }, () => markStreamLoaded());
 
     const unsubSuppliers = subscribeSuppliers((remoteSuppliers) => {
       markStreamLoaded();
       if (Array.isArray(remoteSuppliers)) {
-        const real = remoteSuppliers.filter(s => s.id !== 'sup-1' && s.id !== 'sup-2' && !s.name?.includes('Al-Madina') && !s.name?.includes('Master Electronics'));
-        setSuppliers(real);
-        saveSuppliers(real);
+        setSuppliers(remoteSuppliers);
+        saveSuppliers(remoteSuppliers);
       }
     }, () => markStreamLoaded());
 
     const unsubTrx = subscribeTransactions((remoteTrx) => {
       markStreamLoaded();
       if (Array.isArray(remoteTrx)) {
-        const real = remoteTrx.filter(t => !t.id.startsWith('trx-10') && !t.customerName?.includes('Sample Customer'));
-        setTransactions(real);
-        saveTransactions(real);
+        setTransactions(remoteTrx);
+        saveTransactions(remoteTrx);
       }
     }, () => markStreamLoaded());
 
@@ -225,6 +234,44 @@ export default function App() {
       document.documentElement.classList.remove('light');
     }
   }, [settings]);
+
+  // Initialize Auto-Backup Manager, Google Drive Manager, and storage persistence
+  useEffect(() => {
+    initGoogleDriveManager();
+    initAutoBackupManager().then((st) => {
+      // If user hasn't connected a folder yet, prompt once after a friendly short delay
+      const hasPrompted = localStorage.getItem('balal_storage_prompted_v2');
+      if (!hasPrompted && !st.hasFolderAccess) {
+        const timer = setTimeout(() => {
+          setIsStorageModalOpen(true);
+          localStorage.setItem('balal_storage_prompted_v2', 'true');
+        }, 1200);
+        return () => clearTimeout(timer);
+      }
+    });
+    requestStoragePersistence();
+  }, []);
+
+  // Continuous live background auto-save to local Downloads/Backup folder and Google Drive
+  useEffect(() => {
+    const backupData: CompleteShopBackup = {
+      version: '1.0.0',
+      appName: settings.shopName || 'Balal Mobiles & EasyPaisa Shop',
+      exportDate: new Date().toISOString(),
+      timestamp: Date.now(),
+      transactions,
+      dailyBalances: Object.values(dailyBalances),
+      products,
+      productSales,
+      mobilePurchases,
+      suppliers,
+      settings,
+    };
+    // 1. Local folder auto-save
+    scheduleAutoBackup(backupData, 2000);
+    // 2. Google Drive background cloud auto-save
+    scheduleGoogleDriveAutoBackup(backupData, 3500);
+  }, [transactions, products, productSales, mobilePurchases, suppliers, dailyBalances, settings]);
 
   // Unlock logic
   const handleUnlock = (enteredPin: string): boolean => {
@@ -446,6 +493,82 @@ export default function App() {
     }
   };
 
+  // Bulk Import Products (Excel, CSV, DB)
+  const handleImportProducts = (importedItems: ParsedStockItem[], mode: 'merge' | 'replace') => {
+    let finalProducts: Product[] = [];
+    
+    if (mode === 'replace') {
+      finalProducts = importedItems.map((item, idx) => ({
+        id: item.id || `prod-${Date.now()}-${idx}`,
+        name: item.name,
+        category: item.category,
+        purchasePrice: item.purchasePrice,
+        salePrice: item.salePrice,
+        stock: item.stock,
+        image: item.image || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=400&q=80',
+        brandOrModel: item.brandOrModel || '',
+        imeiOrSerial: item.imeiOrSerial || '',
+        sku: item.sku || '',
+        createdAt: Date.now() + idx,
+      }));
+    } else {
+      const existingMap = new Map<string, Product>();
+      products.forEach((p) => {
+        existingMap.set(p.id, p);
+        if (p.sku) existingMap.set(`sku:${p.sku.toLowerCase()}`, p);
+        if (p.imeiOrSerial) existingMap.set(`imei:${p.imeiOrSerial.toLowerCase()}`, p);
+        existingMap.set(`name:${p.name.toLowerCase()}`, p);
+      });
+
+      const updatedList = [...products];
+      importedItems.forEach((item, idx) => {
+        let match: Product | undefined;
+        if (item.id && existingMap.has(item.id)) match = existingMap.get(item.id);
+        else if (item.sku && existingMap.has(`sku:${item.sku.toLowerCase()}`)) match = existingMap.get(`sku:${item.sku.toLowerCase()}`);
+        else if (item.imeiOrSerial && existingMap.has(`imei:${item.imeiOrSerial.toLowerCase()}`)) match = existingMap.get(`imei:${item.imeiOrSerial.toLowerCase()}`);
+        else if (existingMap.has(`name:${item.name.toLowerCase()}`)) match = existingMap.get(`name:${item.name.toLowerCase()}`);
+
+        if (match) {
+          const updatedP: Product = {
+            ...match,
+            name: item.name,
+            category: item.category,
+            purchasePrice: item.purchasePrice || match.purchasePrice,
+            salePrice: item.salePrice || match.salePrice,
+            stock: item.stock,
+            brandOrModel: item.brandOrModel || match.brandOrModel,
+            imeiOrSerial: item.imeiOrSerial || match.imeiOrSerial,
+            sku: item.sku || match.sku,
+          };
+          const pIndex = updatedList.findIndex(p => p.id === match!.id);
+          if (pIndex !== -1) updatedList[pIndex] = updatedP;
+        } else {
+          const newP: Product = {
+            id: item.id || `prod-${Date.now()}-${idx}`,
+            name: item.name,
+            category: item.category,
+            purchasePrice: item.purchasePrice,
+            salePrice: item.salePrice,
+            stock: item.stock,
+            image: item.image || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=400&q=80',
+            brandOrModel: item.brandOrModel || '',
+            imeiOrSerial: item.imeiOrSerial || '',
+            sku: item.sku || '',
+            createdAt: Date.now() + idx,
+          };
+          updatedList.unshift(newP);
+        }
+      });
+      finalProducts = updatedList;
+    }
+
+    setProducts(finalProducts);
+    saveProducts(finalProducts);
+    if (isAuthenticated) {
+      batchSaveProductsToCloud(finalProducts);
+    }
+  };
+
   // Delete Transaction
   const handleDeleteTransaction = (id: string) => {
     if (confirm('Kya aap waqai yeh entry delete karna chahte hain?')) {
@@ -471,6 +594,63 @@ export default function App() {
     saveSettings(newSettings);
     if (isAuthenticated) {
       saveAppSettingsToCloud(newSettings);
+    }
+  };
+
+  // Restore Entire Shop Backup (From Google Drive or Local JSON)
+  const handleRestoreCompleteBackup = async (backup: CompleteShopBackup) => {
+    if (backup.transactions && Array.isArray(backup.transactions)) {
+      setTransactions(backup.transactions);
+      saveTransactions(backup.transactions);
+      if (isAuthenticated) {
+        backup.transactions.forEach((t) => saveTransactionToCloud(t));
+      }
+    }
+    if (backup.products && Array.isArray(backup.products)) {
+      setProducts(backup.products);
+      saveProducts(backup.products);
+      if (isAuthenticated) {
+        batchSaveProductsToCloud(backup.products);
+      }
+    }
+    if (backup.productSales && Array.isArray(backup.productSales)) {
+      setProductSales(backup.productSales);
+      saveProductSales(backup.productSales);
+      if (isAuthenticated) {
+        backup.productSales.forEach((s) => saveProductSaleToCloud(s));
+      }
+    }
+    if (backup.mobilePurchases && Array.isArray(backup.mobilePurchases)) {
+      setMobilePurchases(backup.mobilePurchases);
+      saveMobilePurchases(backup.mobilePurchases);
+      if (isAuthenticated) {
+        backup.mobilePurchases.forEach((p) => saveMobilePurchaseToCloud(p));
+      }
+    }
+    if (backup.suppliers && Array.isArray(backup.suppliers)) {
+      setSuppliers(backup.suppliers);
+      saveSuppliers(backup.suppliers);
+      if (isAuthenticated) {
+        backup.suppliers.forEach((sup) => saveSupplierToCloud(sup));
+      }
+    }
+    if (backup.dailyBalances && Array.isArray(backup.dailyBalances)) {
+      const balMap: Record<string, DailyBalance> = {};
+      backup.dailyBalances.forEach((b) => {
+        balMap[b.date] = b;
+      });
+      setDailyBalances(balMap);
+      saveAllDailyBalances(balMap);
+      if (isAuthenticated) {
+        backup.dailyBalances.forEach((b) => saveDailyBalanceToCloud(b));
+      }
+    }
+    if (backup.settings) {
+      setSettings(backup.settings);
+      saveSettings(backup.settings);
+      if (isAuthenticated) {
+        saveAppSettingsToCloud(backup.settings);
+      }
     }
   };
 
@@ -561,6 +741,7 @@ export default function App() {
               setIsTrxModalOpen(true);
             }}
             onOpenOpeningBalance={() => setIsOpeningModalOpen(true)}
+            onOpenAutoBackupModal={() => setIsStorageModalOpen(true)}
             onLogout={handleLogout}
             loading={loading}
           />
@@ -639,6 +820,7 @@ export default function App() {
                 products={products}
                 onSaveProduct={handleSaveProduct}
                 onDeleteProduct={handleDeleteProduct}
+                onImportProducts={handleImportProducts}
                 settings={settings}
               />
             )}
@@ -701,6 +883,19 @@ export default function App() {
                 transactions={transactions}
                 onRestoreData={handleRestoreData}
                 onResetData={handleResetData}
+                shopData={{
+                  version: '1.0.0',
+                  appName: settings.shopName || 'Balal Mobiles & EasyPaisa Shop',
+                  exportDate: new Date().toISOString(),
+                  timestamp: Date.now(),
+                  transactions,
+                  dailyBalances: Object.values(dailyBalances),
+                  products,
+                  productSales,
+                  mobilePurchases,
+                  suppliers,
+                  settings,
+                }}
               />
             )}
               </>
@@ -746,6 +941,26 @@ export default function App() {
             onClose={() => setActiveInvoiceSale(null)}
             sale={activeInvoiceSale}
             settings={settings}
+          />
+
+          <StorageAutoBackupModal
+            isOpen={isStorageModalOpen}
+            onClose={() => setIsStorageModalOpen(false)}
+            settings={settings}
+            onRestoreData={handleRestoreCompleteBackup}
+            shopData={{
+              version: '1.0.0',
+              appName: settings.shopName || 'Balal Mobiles & EasyPaisa Shop',
+              exportDate: new Date().toISOString(),
+              timestamp: Date.now(),
+              transactions,
+              dailyBalances: Object.values(dailyBalances),
+              products,
+              productSales,
+              mobilePurchases,
+              suppliers,
+              settings,
+            }}
           />
         </>
       )}

@@ -143,7 +143,7 @@ export const PosView: React.FC<PosViewProps> = ({
       time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       customerName: customerName.trim() || 'Walk-in Customer',
       customerPhone: customerPhone.trim(),
-      items: cart.map(({ stockAvailable, ...rest }) => rest),
+      items: cart.map(({ stockAvailable, image, ...rest }) => rest),
       totalAmount: subtotal,
       discount: discountVal,
       netAmount: netPayable,

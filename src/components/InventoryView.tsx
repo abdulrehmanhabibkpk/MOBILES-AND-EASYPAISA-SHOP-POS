@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
 import { 
   Plus, Search, ShieldAlert, Edit2, Trash2, Image, 
-  Package, Sparkles, X, Check, LayoutGrid, List, Camera
+  Package, Sparkles, X, Check, LayoutGrid, List, Camera,
+  FileSpreadsheet, ArrowUpDown, Download, Upload
 } from 'lucide-react';
 import { Product, ProductCategory, AppSettings } from '../types';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
+import { StockExportImportModal } from './StockExportImportModal';
+import { ParsedStockItem } from '../lib/stockDataHandler';
 import { useHardwareBarcodeScanner } from '../lib/useHardwareBarcodeScanner';
+import { compressImageToDataUrl } from '../lib/imageCompressor';
 
 interface InventoryViewProps {
   products: Product[];
   onSaveProduct: (product: Omit<Product, 'id' | 'createdAt'>, id?: string) => void;
   onDeleteProduct: (id: string) => void;
+  onImportProducts?: (importedItems: ParsedStockItem[], mode: 'merge' | 'replace') => void;
   settings: AppSettings;
 }
 
@@ -30,6 +35,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   products,
   onSaveProduct,
   onDeleteProduct,
+  onImportProducts,
   settings,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,6 +45,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isExportImportOpen, setIsExportImportOpen] = useState(false);
 
   // Form states
   const [name, setName] = useState('');
@@ -103,45 +110,20 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     setIsModalOpen(true);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const maxWidth = 800;
-          const maxHeight = 800;
-
-          if (width > height) {
-            if (width > maxWidth) {
-              height = Math.round((height * maxWidth) / width);
-              width = maxWidth;
-            }
-          } else {
-            if (height > maxHeight) {
-              width = Math.round((width * maxHeight) / height);
-              height = maxHeight;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            setImage(dataUrl);
-          } else {
-            setImage(event.target?.result as string);
-          }
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImageToDataUrl(file, {
+          maxWidth: 720,
+          maxHeight: 720,
+          quality: 0.70,
+          maxSizeBytes: 60 * 1024
+        });
+        setImage(compressed);
+      } catch (err) {
+        console.error("Compression error:", err);
+      }
     }
   };
 
@@ -246,6 +228,20 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               </div>
             )}
 
+            {/* Export & Import Button */}
+            <button
+              onClick={() => setIsExportImportOpen(true)}
+              className={`py-2.5 px-3.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700'
+                  : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'
+              }`}
+              title="Excel, CSV, ya .db database file se stock export aur import karein"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span>Export / Import</span>
+            </button>
+
             <button
               onClick={handleOpenAddModal}
               className="py-2.5 px-4 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold shadow-md shadow-blue-700/20 flex items-center gap-2 transition-all cursor-pointer"
@@ -273,21 +269,36 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
           {/* Category Chips Scroll */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-            {categories.map((cat) => (
-              <button
-                key={cat.key}
-                onClick={() => setSelectedCategory(cat.key)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-colors ${
-                  selectedCategory === cat.key
-                    ? 'bg-blue-700 text-white shadow-sm'
-                    : isLight
-                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                }`}
-              >
-                {cat.label} ({cat.urdu})
-              </button>
-            ))}
+            {categories.map((cat) => {
+              const count = cat.key === 'ALL' 
+                ? products.length 
+                : products.filter(p => p.category === cat.key).length;
+
+              return (
+                <button
+                  key={cat.key}
+                  onClick={() => setSelectedCategory(cat.key)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer ${
+                    selectedCategory === cat.key
+                      ? 'bg-blue-700 text-white shadow-sm'
+                      : isLight
+                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                  }`}
+                >
+                  <span>{cat.label} ({cat.urdu})</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    selectedCategory === cat.key 
+                      ? 'bg-blue-900 text-blue-100' 
+                      : isLight 
+                      ? 'bg-slate-200 text-slate-600' 
+                      : 'bg-slate-700 text-slate-300'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -296,8 +307,23 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       {filteredProducts.length === 0 ? (
         <div className={`p-10 text-center rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
           <Package className="w-12 h-12 mx-auto text-slate-400 mb-2 opacity-50" />
-          <h3 className={`text-base font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>Koi item nahi mila</h3>
-          <p className="text-xs text-slate-400 mt-1">Naya mobile ya accessories item add karne ke liye upar wale button par click karein.</p>
+          <h3 className={`text-base font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+            {products.length === 0 ? 'Abhi koi saman stock ma nahi hai' : 'Koi item nahi mila'}
+          </h3>
+          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+            {products.length === 0 
+              ? 'Firebase database ke sath connect hai. Naya mobile ya accessory item shamil karne ke liye upar "+ Naya Saman Shamil Karein" button dabayein.' 
+              : 'Aap ke search ya category filter ke mutabiq koi product nahi mila.'}
+          </p>
+          {products.length === 0 && (
+            <button
+              onClick={handleOpenAddModal}
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Naya Saman Shamil Karein</span>
+            </button>
+          )}
         </div>
       ) : viewMode === 'list' ? (
         /* PRODUCT LIST TABLE VIEW (DEFAULT LIST VIEW) */
@@ -770,6 +796,18 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onScanSuccess={(code) => setSku(code)}
+      />
+
+      <StockExportImportModal
+        isOpen={isExportImportOpen}
+        onClose={() => setIsExportImportOpen(false)}
+        products={products}
+        onImportProducts={(items, mode) => {
+          if (onImportProducts) {
+            onImportProducts(items, mode);
+          }
+        }}
+        settings={settings}
       />
 
     </div>
