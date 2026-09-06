@@ -7,5 +7,6 @@
   "messagingSenderId": "623913814384",
   "measurementId": "",
   "oAuthClientId": "623913814384-f2ff75vj8qqnsuol96451bcdk9o3etfs.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "recaptchaSiteKey": "",
+  "firestoreDatabaseId": "ai-studio-balalmobile-0cd4de0b-410f-4735-b752-65780f15d381"
 }

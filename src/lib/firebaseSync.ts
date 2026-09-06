@@ -25,14 +25,14 @@ function cleanPayload<T extends Record<string, any>>(obj: T): T {
 
 const SHOP_PATH = 'shops/mainShop';
 
-// 1. PRODUCTS (Limited to prevent quota spikes)
+// 1. PRODUCTS
 export function subscribeProducts(
   onUpdate: (products: Product[]) => void,
   onError?: (err: any) => void
 ) {
   const colPath = `${SHOP_PATH}/products`;
   try {
-    const q = query(collection(db, colPath), limit(200));
+    const q = query(collection(db, colPath), limit(1000));
     return onSnapshot(q, (snapshot) => {
       const products: Product[] = [];
       snapshot.forEach((docSnap) => {

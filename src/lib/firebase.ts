@@ -25,7 +25,7 @@ import firebaseConfig from '../../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore with persistent IndexedDB local cache for fast offline sync and quota savings
-const dbId = (firebaseConfig as any).firestoreDatabaseId;
+const dbId = (firebaseConfig as any).firestoreDatabaseId || 'ai-studio-balalmobile-0cd4de0b-410f-4735-b752-65780f15d381';
 let firestoreDb;
 try {
   firestoreDb = dbId 
