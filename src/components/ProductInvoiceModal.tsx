@@ -83,13 +83,22 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
     doc.text(`Payment Method: ${sale.paymentMethod}`, 130, 48);
 
     // Table
-    const tableData = sale.items.map((item, idx) => [
-      idx + 1,
-      item.productName,
-      item.quantity,
-      `Rs. ${item.unitSalePrice.toLocaleString()}`,
-      `Rs. ${item.totalSalePrice.toLocaleString()}`,
-    ]);
+    const tableData = sale.items.map((item, idx) => {
+      const details = [
+        item.productName,
+        item.selectedImei1 ? `IMEI: ${item.selectedImei1}` : '',
+        item.selectedColor ? `Color: ${item.selectedColor}` : '',
+        item.selectedCondition ? (item.selectedCondition === 'NEW' ? 'Pin Pack' : 'Used') : '',
+      ].filter(Boolean).join(' | ');
+
+      return [
+        idx + 1,
+        details,
+        item.quantity,
+        `Rs. ${item.unitSalePrice.toLocaleString()}`,
+        `Rs. ${item.totalSalePrice.toLocaleString()}`,
+      ];
+    });
 
     autoTable(doc, {
       startY: 60,
@@ -304,7 +313,15 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
                 <tbody className="divide-y divide-slate-200 print:divide-slate-400">
                   {sale.items.map((item, idx) => (
                     <tr key={idx} className="align-top">
-                      <td className="py-1 font-medium pr-1">{item.productName}</td>
+                      <td className="py-1 font-medium pr-1">
+                        <div>{item.productName}</div>
+                        {(item.selectedImei1 || item.selectedColor) && (
+                          <div className="text-[9px] font-bold text-slate-700 print:text-black">
+                            {item.selectedImei1 && <span>IMEI: {item.selectedImei1} </span>}
+                            {item.selectedColor && <span>({item.selectedColor})</span>}
+                          </div>
+                        )}
+                      </td>
                       <td className="py-1 text-center font-bold">{item.quantity}</td>
                       <td className="py-1 text-right font-bold">Rs {item.totalSalePrice.toLocaleString()}</td>
                     </tr>
@@ -421,7 +438,17 @@ export const ProductInvoiceModal: React.FC<ProductInvoiceModalProps> = ({
                   {sale.items.map((item, idx) => (
                     <tr key={idx}>
                       <td className="py-2.5 px-3 text-slate-400 font-bold">{idx + 1}</td>
-                      <td className="py-2.5 px-3 font-bold text-slate-900">{item.productName}</td>
+                      <td className="py-2.5 px-3 text-slate-900">
+                        <div className="font-bold">{item.productName}</div>
+                        {(item.selectedImei1 || item.selectedColor || item.selectedCondition) && (
+                          <div className="flex items-center gap-2 text-[10px] text-slate-600 print:text-black mt-0.5 flex-wrap">
+                            {item.selectedImei1 && <span className="font-mono bg-blue-50 print:bg-none px-1.5 py-0.2 rounded border border-blue-200 print:border-none font-bold">IMEI: {item.selectedImei1}</span>}
+                            {item.selectedImei2 && <span className="font-mono text-slate-500">IMEI 2: {item.selectedImei2}</span>}
+                            {item.selectedColor && <span className="font-semibold">• Color: {item.selectedColor}</span>}
+                            {item.selectedCondition && <span>• ({item.selectedCondition === 'NEW' ? 'Pin Pack' : 'Used'})</span>}
+                          </div>
+                        )}
+                      </td>
                       <td className="py-2.5 px-2 text-center font-bold">{item.quantity}</td>
                       <td className="py-2.5 px-3 text-right font-mono">Rs {item.unitSalePrice.toLocaleString()}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-extrabold text-slate-900">Rs {item.totalSalePrice.toLocaleString()}</td>

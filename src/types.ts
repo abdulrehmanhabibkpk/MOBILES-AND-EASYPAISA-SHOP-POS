@@ -17,6 +17,21 @@ export type PaymentMethod =
 
 export type ProductCategory = 'MOBILES' | 'CHARGERS' | 'EARPHONES' | 'COVERS' | 'PROTECTORS' | 'CABLES' | 'BATTERIES' | 'ACCESSORIES' | 'OTHER';
 
+export interface ProductUnitItem {
+  id: string; // unique unit identifier e.g. "unit-1"
+  imei1?: string;
+  imei2?: string;
+  serialNo?: string;
+  color?: string;
+  storageRam?: string;
+  condition?: 'NEW' | 'USED';
+  ptaStatus?: 'PTA_APPROVED' | 'NON_PTA' | 'JV' | 'FACTORY_UNLOCK';
+  batteryHealth?: string;
+  status: 'AVAILABLE' | 'SOLD';
+  soldInvoiceNo?: string;
+  soldDate?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -26,9 +41,26 @@ export interface Product {
   stock: number;         // Stock Tadad
   image?: string;        // Photo URL or Data URL
   brandOrModel?: string; // e.g. Vivo Y21, Samsung 25W
-  imeiOrSerial?: string; // IMEI or Serial No
+  imeiOrSerial?: string; // Primary IMEI or Serial No
   sku?: string;          // SKU or Barcode Number
   createdAt: number;
+
+  // Individual Units / Multi-IMEI & Multi-Color tracking
+  units?: ProductUnitItem[];
+
+  // Dynamic Category Specifications
+  color?: string;
+  ramStorage?: string;
+  condition?: 'NEW' | 'USED';
+  ptaStatus?: 'PTA_APPROVED' | 'NON_PTA' | 'JV' | 'FACTORY_UNLOCK';
+  warranty?: string;
+  batteryHealth?: string;
+  wattage?: string;
+  portType?: string;
+  compatibleModel?: string;
+  protectorType?: string;
+  cableType?: string;
+  batteryCapacity?: string;
 }
 
 export interface ProductSaleItem {
@@ -40,6 +72,15 @@ export interface ProductSaleItem {
   unitSalePrice: number;
   totalSalePrice: number;
   image?: string;
+
+  // Specific Unit Sold Details
+  selectedUnitId?: string;
+  selectedImei1?: string;
+  selectedImei2?: string;
+  selectedColor?: string;
+  selectedSerial?: string;
+  selectedCondition?: string;
+  selectedRamStorage?: string;
 }
 
 export interface ProductSale {
