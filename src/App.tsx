@@ -75,6 +75,8 @@ import {
   initGoogleDriveManager, 
   scheduleGoogleDriveAutoBackup 
 } from './lib/googleDriveManager';
+import { initPWAManager } from './lib/pwaManager';
+import { OfflineIndicatorBanner } from './components/OfflineIndicatorBanner';
 import { Footer } from './components/Footer';
 import { GlobalLoadingSkeleton } from './components/GlobalLoadingSkeleton';
 import { LoadingOverlay } from './components/LoadingOverlay';
@@ -235,8 +237,9 @@ export default function App() {
     }
   }, [settings]);
 
-  // Initialize Auto-Backup Manager, Google Drive Manager, and storage persistence
+  // Initialize Auto-Backup Manager, Google Drive Manager, PWA Offline Service Worker, and storage persistence
   useEffect(() => {
+    initPWAManager();
     initGoogleDriveManager();
     initAutoBackupManager().then((st) => {
       // If user hasn't connected a folder yet, prompt once after a friendly short delay
@@ -727,6 +730,9 @@ export default function App() {
               isInitialLoading={true}
             />
           )}
+
+          {/* Top Offline/Update Banner */}
+          <OfflineIndicatorBanner />
 
           <Navbar
             activeTab={activeTab}

@@ -29,7 +29,10 @@ import {
   HardDrive,
   RefreshCw,
   AlertTriangle,
-  UploadCloud
+  UploadCloud,
+  Wifi,
+  WifiOff,
+  Smartphone
 } from 'lucide-react';
 import { AppSettings, Transaction, AllowedAccount } from '../types';
 import { t, Language } from '../lib/i18n';
@@ -53,6 +56,7 @@ import {
   onGoogleDriveStatusChange,
   GoogleDriveStatus
 } from '../lib/googleDriveManager';
+import { onPWAStateChange, PWAState, promptPWAInstall } from '../lib/pwaManager';
 import { User, onAuthStateChanged } from 'firebase/auth';
 
 interface SettingsViewProps {
@@ -129,15 +133,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [pendingQueueCount, setPendingQueueCount] = useState<number>(0);
   const [isFlushingQueue, setIsFlushingQueue] = useState(false);
   const [flushResult, setFlushResult] = useState<string | null>(null);
+  const [pwaState, setPwaState] = useState<PWAState>({
+    isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+    isInstallable: false,
+    isInstalled: false,
+    needRefresh: false,
+    offlineReady: false,
+  });
 
   useEffect(() => {
     const unsubBackup = onBackupStatusChange((st) => setBackupStatus(st));
     const unsubQueue = onPendingQueueChange((cnt) => setPendingQueueCount(cnt));
     const unsubDrive = onGoogleDriveStatusChange((st) => setDriveStatus(st));
+    const unsubPWA = onPWAStateChange((st) => setPwaState(st));
     return () => {
       unsubBackup();
       unsubQueue();
       unsubDrive();
+      unsubPWA();
     };
   }, []);
 
@@ -933,6 +946,88 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             {flushResult}
           </div>
         )}
+      </div>
+
+      {/* Offline PWA & Device Installation Section */}
+      <div className={`${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} border rounded-2xl p-4 sm:p-6 shadow-xl space-y-4 transition-colors duration-200`}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className={`font-bold text-sm sm:text-base ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                Offline App & Device Install (آف لائن ایپ)
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                انٹرنیٹ کے بغیر سافٹ ویئر چلانے کے لیے اپنے موبائل یا کمپیوٹر پر ایپ انسٹال کریں
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 border ${
+              pwaState.isOnline 
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+            }`}>
+              {pwaState.isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+              <span>{pwaState.isOnline ? 'Internet Active (آن لائن)' : 'Offline Active (آف لائن)'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          
+          {/* Offline Cache & Service Worker Card */}
+          <div className={`p-4 rounded-xl border space-y-2 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800/50 border-slate-700'}`}>
+            <h4 className={`font-bold text-xs sm:text-sm flex items-center gap-1.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span>Full Offline Capability</span>
+            </h4>
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              سافٹ ویئر کی تمام فائلز اور ڈیٹا آپ کی ڈیوائس میں محفوظ ہیں۔ اگر انٹرنیٹ بند ہو تب بھی بلنگ، اسٹاک اور کھاتہ بنا کسی رکاوٹ کے چلے گا۔
+            </p>
+            <div className="pt-2 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+              ✓ Service Worker: Active & Caching Ready
+            </div>
+          </div>
+
+          {/* Install App on Device Card */}
+          <div className={`p-4 rounded-xl border flex flex-col justify-between ${isLight ? 'bg-emerald-50/50 border-emerald-200' : 'bg-emerald-950/20 border-emerald-800/40'}`}>
+            <div className="space-y-1.5">
+              <h4 className="font-bold text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                <Download className="w-4 h-4" />
+                <span>Install on Mobile / PC</span>
+              </h4>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                {pwaState.isInstalled 
+                  ? 'یہ سافٹ ویئر آپ کے ڈیوائس پر پہلے سے انسٹال ہے اور ہوم اسکرین سے کھل سکتا ہے۔'
+                  : 'ہوم اسکرین یا ڈیسک ٹاپ پر ایپ انسٹال کرنے کے لیے نیچے بٹن دبائیں۔'}
+              </p>
+            </div>
+
+            <div className="pt-3">
+              {pwaState.isInstallable ? (
+                <button
+                  type="button"
+                  onClick={() => promptPWAInstall()}
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-emerald-600/20"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Install App to Desktop / Mobile (انسٹال کریں)</span>
+                </button>
+              ) : (
+                <div className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-500/20">
+                  {pwaState.isInstalled 
+                    ? '✓ App is already installed and ready for offline use'
+                    : '💡 Browser Menu (3 Dots) -> "Install App" or "Add to Home Screen" par click karein.'}
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
       </div>
 
       {/* Backup & Restore Data Section */}

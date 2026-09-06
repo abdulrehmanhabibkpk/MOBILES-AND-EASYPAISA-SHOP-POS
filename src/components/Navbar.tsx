@@ -26,13 +26,17 @@ import {
   FolderDown,
   CloudUpload,
   Cloud,
-  HardDrive
+  HardDrive,
+  WifiOff,
+  Wifi,
+  Download
 } from 'lucide-react';
 import { AppSettings } from '../types';
 import { CashCalculatorModal } from './CashCalculatorModal';
 import { onBackupStatusChange, BackupStatus } from '../lib/autoBackupManager';
 import { onPendingQueueChange } from '../lib/offlineSyncManager';
 import { onGoogleDriveStatusChange, GoogleDriveStatus } from '../lib/googleDriveManager';
+import { onPWAStateChange, PWAState, promptPWAInstall } from '../lib/pwaManager';
 import { t } from '../lib/i18n';
 
 export type NavTab = 'dashboard' | 'pos' | 'inventory' | 'purchases' | 'suppliers' | 'stock-ledger' | 'ledger' | 'reports' | 'customers' | 'barcodes' | 'settings' | 'filemanager' | 'sales';
@@ -90,15 +94,24 @@ export const Navbar: React.FC<NavbarProps> = ({
     isSyncing: false,
   });
   const [pendingQueueCount, setPendingQueueCount] = useState<number>(0);
+  const [pwaState, setPwaState] = useState<PWAState>({
+    isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+    isInstallable: false,
+    isInstalled: false,
+    needRefresh: false,
+    offlineReady: false,
+  });
 
   useEffect(() => {
     const unsubBackup = onBackupStatusChange((st) => setBackupStatus(st));
     const unsubQueue = onPendingQueueChange((cnt) => setPendingQueueCount(cnt));
     const unsubDrive = onGoogleDriveStatusChange((st) => setDriveStatus(st));
+    const unsubPWA = onPWAStateChange((st) => setPwaState(st));
     return () => {
       unsubBackup();
       unsubQueue();
       unsubDrive();
+      unsubPWA();
     };
   }, []);
 
@@ -167,6 +180,35 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Quick Actions & Utilities - Clean Responsive Layout */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           
+          {/* Online / Offline Network Status Pill */}
+          <div
+            className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-bold border transition-colors ${
+              pwaState.isOnline
+                ? (isLight ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-950/40 text-emerald-400 border-emerald-800/50')
+                : 'bg-amber-500 text-white border-amber-600 animate-pulse'
+            }`}
+            title={pwaState.isOnline ? 'انٹرنیٹ کنیکٹ ہے (Online)' : 'آف لائن موڈ - لوکل اسٹوریج فعال ہے (Offline Mode)'}
+          >
+            {pwaState.isOnline ? (
+              <Wifi className="w-3.5 h-3.5 text-emerald-500" />
+            ) : (
+              <WifiOff className="w-3.5 h-3.5 text-white" />
+            )}
+            <span className="hidden lg:inline">{pwaState.isOnline ? 'Online' : 'Offline'}</span>
+          </div>
+
+          {/* Install PWA Button (if installable and not installed) */}
+          {pwaState.isInstallable && (
+            <button
+              onClick={() => promptPWAInstall()}
+              className="h-8 sm:h-9 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] sm:text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer shrink-0 animate-bounce-short"
+              title="موبائل یا کمپیوٹر پر ایپ انسٹال کریں"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Install App</span>
+            </button>
+          )}
+
           {/* Storage & Auto-Backup Status Button */}
           <button
             onClick={onOpenAutoBackupModal}
@@ -380,6 +422,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className={`p-3 text-center text-xs space-y-2 border-t ${
               isLight ? 'bg-slate-50 border-slate-200' : 'bg-neutral-950 border-emerald-900/40'
             }`}>
+              {pwaState.isInstallable && (
+                <button
+                  onClick={async () => {
+                    setIsDrawerOpen(false);
+                    await promptPWAInstall();
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer animate-pulse"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{isEn ? 'Install App (Offline Ready)' : 'ایپ انسٹال کریں (آف لائن استعمال)'}</span>
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   setIsDrawerOpen(false);

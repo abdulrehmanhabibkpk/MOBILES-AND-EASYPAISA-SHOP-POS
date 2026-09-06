@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+  <!-- Background with safe padding for maskable -->
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+  
+  <!-- Outer Glow Ring -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#6EE7B7" stroke-width="6" opacity="0.4"/>
+  
+  <!-- Smartphone Outline -->
+  <rect x="146" y="96" width="220" height="320" rx="36" fill="#064E3B" stroke="#A7F3D0" stroke-width="12"/>
+  <rect x="166" y="136" width="180" height="230" rx="16" fill="#022C22"/>
+  
+  <!-- Screen Elements -->
+  <!-- Top speaker -->
+  <rect x="226" y="112" width="60" height="8" rx="4" fill="#6EE7B7"/>
+  
+  <!-- EasyPaisa / Currency Symbol inside phone -->
+  <circle cx="256" cy="230" r="48" fill="url(#accent)"/>
+  <text x="256" y="248" font-family="Arial, sans-serif" font-size="44" font-weight="900" fill="#064E3B" text-anchor="middle">Rs</text>
+  
+  <!-- Signal / POS waves -->
+  <path d="M 200 310 Q 256 290 312 310" fill="none" stroke="#34D399" stroke-width="8" stroke-linecap="round"/>
+  <path d="M 216 330 Q 256 316 296 330" fill="none" stroke="#6EE7B7" stroke-width="6" stroke-linecap="round"/>
+  
+  <!-- Home Indicator -->
+  <circle cx="256" cy="388" r="12" fill="#34D399"/>
+</svg>
