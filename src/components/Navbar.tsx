@@ -71,6 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   loading = false,
 }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isQuickToolsOpen, setIsQuickToolsOpen] = useState(false);
   const [drawerSearch, setDrawerSearch] = useState('');
   const [isCashCalcOpen, setIsCashCalcOpen] = useState(false);
   const [backupStatus, setBackupStatus] = useState<BackupStatus>({
@@ -116,7 +117,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   const isLight = settings.theme === 'light';
-
   const isEn = settings.language === 'en';
 
   const menuItems: { id: NavTab; title: string; icon: any }[] = [
@@ -141,12 +141,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   );
 
   return (
-    <header className={`${isLight ? 'bg-white border-neutral-200 text-neutral-900' : 'bg-black border-neutral-900 text-neutral-100'} border-b sticky top-0 z-40 shadow-md transition-colors duration-200`}>
-      {/* Main Bar - Mobile Optimized without Overlaps */}
+    <header className={`${isLight ? 'bg-white border-neutral-200 text-neutral-900' : 'bg-black border-neutral-900 text-neutral-100'} border-b sticky top-0 z-40 shadow-sm transition-colors duration-200`}>
+      {/* Main Bar - Fully Responsive with no horizontal overflow */}
       <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 flex items-center justify-between gap-1.5 sm:gap-3">
         
-        {/* Left: Drawer Toggle Button & Shop Logo */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink">
+        {/* Left: Drawer Toggle Button & Shop Identity */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1 sm:flex-initial">
           <button
             onClick={() => setIsDrawerOpen(true)}
             className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center justify-center transition-all cursor-pointer shrink-0"
@@ -160,12 +160,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           <div className="min-w-0 overflow-hidden">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <h1 className={`text-xs sm:text-base font-extrabold leading-tight truncate ${isLight ? 'text-neutral-900' : 'text-white'}`}>
                 {settings.shopName || 'Balal Mobiles and EasyPaisa Shop'}
               </h1>
               {loading && (
-                <div className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/20 animate-pulse">
+                <div className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/20 animate-pulse shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                   <span>Syncing...</span>
                 </div>
@@ -177,17 +177,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Quick Actions & Utilities - Clean Responsive Layout */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          
+        {/* Right Actions - Desktop Layout (md and up) */}
+        <div className="hidden md:flex items-center gap-1.5 lg:gap-2 shrink-0">
           {/* Online / Offline Network Status Pill */}
           <div
-            className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-bold border transition-colors ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-bold border transition-colors ${
               pwaState.isOnline
                 ? (isLight ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-950/40 text-emerald-400 border-emerald-800/50')
                 : 'bg-amber-500 text-white border-amber-600 animate-pulse'
             }`}
-            title={pwaState.isOnline ? 'انٹرنیٹ کنیکٹ ہے (Online)' : 'آف لائن موڈ - لوکل اسٹوریج فعال ہے (Offline Mode)'}
+            title={pwaState.isOnline ? 'انٹرنیٹ کنیکٹ ہے (Online)' : 'آف لائن موڈ (Offline Mode)'}
           >
             {pwaState.isOnline ? (
               <Wifi className="w-3.5 h-3.5 text-emerald-500" />
@@ -196,18 +195,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
             <span className="hidden lg:inline">{pwaState.isOnline ? 'Online' : 'Offline'}</span>
           </div>
-
-          {/* Install PWA Button (if installable and not installed) */}
-          {pwaState.isInstallable && (
-            <button
-              onClick={() => promptPWAInstall()}
-              className="h-8 sm:h-9 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] sm:text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer shrink-0 animate-bounce-short"
-              title="موبائل یا کمپیوٹر پر ایپ انسٹال کریں"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Install App</span>
-            </button>
-          )}
 
           {/* Storage & Auto-Backup Status Button */}
           <button
@@ -281,49 +268,199 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Lock className="w-4 h-4" />
           </button>
 
-          {/* POS Button */}
+          {/* Date Picker */}
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-neutral-900 border border-emerald-200 dark:border-neutral-800 text-xs shadow-sm">
             <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="bg-transparent text-xs font-mono font-bold outline-none cursor-pointer text-emerald-900 dark:text-emerald-300 w-28 sm:w-32"
+              className="bg-transparent text-xs font-mono font-bold outline-none cursor-pointer text-emerald-900 dark:text-emerald-300 w-28 lg:w-32"
             />
           </div>
 
+          {/* Opening Capital Button */}
           <button
             onClick={onOpenOpeningBalance}
-            className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] sm:text-xs flex items-center gap-1 shadow-md shadow-emerald-600/20 transition-all cursor-pointer shrink-0"
+            className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1 shadow-md shadow-emerald-600/20 transition-all cursor-pointer shrink-0"
             title="Set Opening Capital"
           >
             <Wallet className="w-3.5 h-3.5" />
-            <span className="hidden lg:inline">{isEn ? 'Set Capital' : 'افتتاحی کیش'}</span>
+            <span className="hidden lg:inline">{isEn ? 'Capital' : 'افتتاحی کیش'}</span>
           </button>
 
+          {/* POS Sale Button */}
           <button
             onClick={() => setActiveTab('pos')}
-            className={`px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl font-bold text-[11px] sm:text-xs flex items-center gap-1 shadow-md transition-all cursor-pointer shrink-0 ${
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer shrink-0 ${
               isLight
                 ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500 shadow-emerald-600/20'
-                : 'bg-neutral-900 hover:bg-black text-white border border-emerald-600/40'
+                : 'bg-neutral-900 hover:bg-neutral-800 text-white border border-emerald-600/40'
             }`}
           >
             <ShoppingCart className={`w-3.5 h-3.5 ${isLight ? 'text-white' : 'text-emerald-400'}`} />
-            <span className="hidden sm:inline">{t('posBtn', settings)}</span>
-            <span className="sm:hidden">POS</span>
+            <span>POS</span>
           </button>
 
           {/* EasyPaisa New Transaction Button */}
           <button
             onClick={onOpenNewTransaction}
-            className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] sm:text-xs flex items-center gap-1 shadow-md shadow-teal-600/20 transition-all cursor-pointer shrink-0"
+            className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-teal-600/20 transition-all cursor-pointer shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">{t('newEasyPaisa', settings)}</span>
-            <span className="md:hidden">+ EasyPaisa</span>
+            <span>+ EasyPaisa</span>
           </button>
         </div>
+
+        {/* Right Actions - Mobile & Small Screen Compact Layout (Clean, No Overflow) */}
+        <div className="flex md:hidden items-center gap-1 shrink-0">
+          {/* Compact Date Selector */}
+          <div className="flex items-center gap-1 px-1.5 py-1 rounded-lg bg-emerald-50 dark:bg-neutral-900 border border-emerald-200 dark:border-neutral-800 text-[11px] shadow-sm">
+            <Calendar className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-transparent text-[11px] font-mono font-bold outline-none cursor-pointer text-emerald-900 dark:text-emerald-300 w-20"
+            />
+          </div>
+
+          {/* Quick Tools Button (Toggles Mobile Quick Actions Sheet) */}
+          <div className="relative">
+            <button
+              onClick={() => setIsQuickToolsOpen(!isQuickToolsOpen)}
+              className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all cursor-pointer shadow-sm ${
+                isQuickToolsOpen
+                  ? 'bg-emerald-600 text-white border-emerald-700'
+                  : isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                  : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border-neutral-800'
+              }`}
+              title="Quick Tools (Calculator, Backup, Theme, Lock)"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+
+            {/* Mobile Quick Tools Dropdown */}
+            {isQuickToolsOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-black/20"
+                  onClick={() => setIsQuickToolsOpen(false)}
+                />
+                <div className={`absolute right-0 top-10 w-56 p-2 rounded-2xl border shadow-2xl z-50 transition-all ${
+                  isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-neutral-950 border-neutral-800 text-white'
+                }`}>
+                  <div className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 text-slate-400 border-b border-slate-100 dark:border-neutral-800 mb-1 flex items-center justify-between">
+                    <span>کوئیک ٹولز (Quick Tools)</span>
+                    <button
+                      onClick={() => setIsQuickToolsOpen(false)}
+                      className="text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-1 text-xs font-bold">
+                    <button
+                      onClick={() => {
+                        setIsQuickToolsOpen(false);
+                        setIsCashCalcOpen(true);
+                      }}
+                      className="w-full px-2.5 py-2 rounded-xl flex items-center gap-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 transition-colors text-left cursor-pointer"
+                    >
+                      <Calculator className="w-4 h-4" />
+                      <span>Cash Counter (کیش گنتی)</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsQuickToolsOpen(false);
+                        onOpenOpeningBalance();
+                      }}
+                      className="w-full px-2.5 py-2 rounded-xl flex items-center gap-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 transition-colors text-left cursor-pointer"
+                    >
+                      <Wallet className="w-4 h-4" />
+                      <span>Opening Cash (افتتاحی رقم)</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsQuickToolsOpen(false);
+                        if (onOpenAutoBackupModal) onOpenAutoBackupModal();
+                      }}
+                      className="w-full px-2.5 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-blue-700 dark:text-blue-400 transition-colors text-left cursor-pointer"
+                    >
+                      {driveStatus.isConnected ? (
+                        <Cloud className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <FolderDown className="w-4 h-4 text-blue-600" />
+                      )}
+                      <span>
+                        {driveStatus.isConnected ? 'Google Drive Synced' : 'Backup & Auto-Save'}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onToggleTheme();
+                      }}
+                      className="w-full px-2.5 py-2 rounded-xl flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors text-left cursor-pointer"
+                    >
+                      {isLight ? (
+                        <>
+                          <Moon className="w-4 h-4 text-slate-700" />
+                          <span>Dark Mode (نائٹ موڈ)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sun className="w-4 h-4 text-amber-400" />
+                          <span>Light Mode (ڈے موڈ)</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsQuickToolsOpen(false);
+                        onLock();
+                      }}
+                      className="w-full px-2.5 py-2 rounded-xl flex items-center gap-2 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 transition-colors text-left cursor-pointer border-t border-slate-100 dark:border-neutral-800 pt-1.5"
+                    >
+                      <Lock className="w-4 h-4" />
+                      <span>Lock App (سافٹ ویئر لاک کریں)</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Quick POS Button */}
+          <button
+            onClick={() => setActiveTab('pos')}
+            className={`h-8 px-2 rounded-lg font-bold text-[11px] flex items-center gap-1 shadow-sm transition-all cursor-pointer ${
+              isLight
+                ? 'bg-emerald-600 text-white'
+                : 'bg-neutral-900 text-emerald-400 border border-emerald-600/40'
+            }`}
+            title="Point of Sale"
+          >
+            <ShoppingCart className="w-3.5 h-3.5" />
+            <span>POS</span>
+          </button>
+
+          {/* Quick + EasyPaisa Button */}
+          <button
+            onClick={onOpenNewTransaction}
+            className="h-8 px-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+            title="New EasyPaisa Transaction"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>EasyPaisa</span>
+          </button>
+        </div>
+
       </div>
 
       {/* Side Menu Drawer matching Light Theme */}
