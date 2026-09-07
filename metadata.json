@@ -1,6 +1,0 @@
-{
-  "name": "Balal Mobiles and EasyPaisa Shop",
-  "description": "Balal Mobiles and EasyPaisa Shop POS - Shop Management, Mobile Purchases, Inventory & Cash Ledger.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

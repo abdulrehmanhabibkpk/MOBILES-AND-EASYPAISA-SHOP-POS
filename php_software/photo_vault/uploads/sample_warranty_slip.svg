@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 380" width="600" height="380">
+  <defs>
+    <linearGradient id="slipBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fffbeb" />
+      <stop offset="100%" stop-color="#fef3c7" />
+    </linearGradient>
+  </defs>
+  <rect width="600" height="380" rx="16" fill="url(#slipBg)" stroke="#d97706" stroke-width="2"/>
+  <rect x="25" y="25" width="550" height="330" rx="10" fill="none" stroke="#b45309" stroke-dasharray="6 4" stroke-width="1.5"/>
+  
+  <text x="300" y="65" font-family="sans-serif" font-size="18" font-weight="900" fill="#78350f" text-anchor="middle">OFFICIAL WARRANTY &amp; INVOICE SLIP</text>
+  <text x="300" y="88" font-family="sans-serif" font-size="13" font-weight="bold" fill="#92400e" text-anchor="middle">بلال موبائل و وارنٹی رسید</text>
+  <line x1="50" y1="105" x2="550" y2="105" stroke="#d97706" stroke-width="1.5"/>
+  
+  <text x="60" y="140" font-family="sans-serif" font-size="12" font-weight="bold" fill="#78350f">انوائس / رسید نمبر: <tspan font-family="monospace" fill="#b45309">REC-2024-8841</tspan></text>
+  <text x="540" y="140" font-family="sans-serif" font-size="12" font-weight="bold" fill="#78350f" text-anchor="end">تاریخ: 2026-09-05</text>
+  
+  <text x="60" y="175" font-family="sans-serif" font-size="12" font-weight="bold" fill="#78350f">ڈیوائس کا ماڈل: <tspan fill="#1e3a8a">Redmi Note 13 (8GB / 256GB)</tspan></text>
+  <text x="60" y="210" font-family="sans-serif" font-size="12" font-weight="bold" fill="#78350f">آئی ایم ای آئی (IMEI): <tspan font-family="monospace" fill="#1e3a8a">864231098765431</tspan></text>
+  <text x="60" y="245" font-family="sans-serif" font-size="12" font-weight="bold" fill="#78350f">وارنٹی کی مدت: <tspan fill="#047857">1 سالہ آفیشل برانڈ وارنٹی (Brand Warranty Active)</tspan></text>
+  
+  <rect x="60" y="275" width="480" height="60" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="80" y="300" font-family="sans-serif" font-size="11" font-weight="bold" fill="#64748b">شرائط: وارنٹی کلیم کیلئے رسید اور شناختی کارڈ کی کاپی لازمی ہے۔</text>
+  <text x="80" y="322" font-family="sans-serif" font-size="11" font-weight="bold" fill="#059669">مہر و دستخط: بلال موبائل اینڈ ایزی پیسہ زون (تصدیق شدہ)</text>
+</svg>
