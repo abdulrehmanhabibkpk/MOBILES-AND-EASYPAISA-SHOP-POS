@@ -39,7 +39,30 @@ export interface RemoteDataset {
 }
 
 function cleanBaseUrl(url: string): string {
-  let cleaned = url.trim();
+  let cleaned = (url || '').trim();
+  if (!cleaned) {
+    if (typeof window !== 'undefined' && window.location.origin) {
+      return window.location.origin.replace(/\/+$/, '') + '/api';
+    }
+    return '';
+  }
+  
+  // Handle relative paths like /api or ./api
+  if (cleaned.startsWith('/') || cleaned.startsWith('./')) {
+    if (typeof window !== 'undefined' && window.location.origin) {
+      const path = cleaned.startsWith('./') ? cleaned.slice(1) : cleaned;
+      return (window.location.origin.replace(/\/+$/, '') + path).replace(/\/+$/, '');
+    }
+  }
+
+  if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
+    // If running in browser and protocol is http, use http, otherwise default to https
+    if (typeof window !== 'undefined' && window.location.protocol === 'http:') {
+      cleaned = 'http://' + cleaned;
+    } else {
+      cleaned = 'https://' + cleaned;
+    }
+  }
   // Remove trailing slash
   cleaned = cleaned.replace(/\/+$/, '');
   return cleaned;
@@ -55,17 +78,35 @@ export async function testPhpConnection(baseUrl: string): Promise<PhpConnectionR
 
   const base = cleanBaseUrl(baseUrl);
   
-  // Try direct health.php first, then /api/health.php fallback if user supplied root domain
-  const candidateUrls = [
-    `${base}/health.php`,
-    `${base}/api/health.php`,
-    base.endsWith('.php') ? base : `${base}/health.php`
-  ];
+  // Try direct health.php first, then /api/health.php, and root if already ending with .php
+  const candidateUrls: string[] = [];
+  
+  // Primary URL
+  if (base.endsWith('.php')) {
+    candidateUrls.push(base);
+  } else if (base.endsWith('/api')) {
+    candidateUrls.push(`${base}/health.php`);
+    candidateUrls.push(`${base.slice(0, -4)}/health.php`);
+  } else {
+    candidateUrls.push(`${base}/health.php`);
+    candidateUrls.push(`${base}/api/health.php`);
+  }
+
+  // Also test http version if https was provided (InfinityFree free domains often don't have SSL by default)
+  if (base.startsWith('https://')) {
+    const httpBase = 'http://' + base.slice(8);
+    if (!httpBase.endsWith('.php')) {
+      candidateUrls.push(`${httpBase}/health.php`);
+      candidateUrls.push(`${httpBase}/api/health.php`);
+    }
+  }
 
   let lastError = '';
+  let attemptedUrl = '';
 
   for (const url of candidateUrls) {
     try {
+      attemptedUrl = url;
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -75,7 +116,18 @@ export async function testPhpConnection(baseUrl: string): Promise<PhpConnectionR
       });
 
       if (response.ok) {
-        const json = await response.json();
+        const text = await response.text();
+        let json: any;
+        try {
+          json = JSON.parse(text);
+        } catch {
+          // If response is HTML, it is likely an InfinityFree bot-check page or a PHP error page
+          return {
+            success: false,
+            message: `سرور نے درست JSON کے بجائے HTML رسپانس دیا ہے۔ InfinityFree مفت ہوسٹنگ پر براہ راست بیرونی API بلاک ہو سکتی ہے یا فائل کا ایڈریس مختلف ہے۔ (رسپانس: ${text.slice(0, 120)}...)`
+          };
+        }
+
         if (json.success) {
           return {
             success: true,
@@ -87,11 +139,11 @@ export async function testPhpConnection(baseUrl: string): Promise<PhpConnectionR
         } else {
           return {
             success: false,
-            message: json.error || 'Database connection error on PHP server'
+            message: json.error || json.hint || 'Database connection error on PHP server. Please check config.php'
           };
         }
       } else {
-        lastError = `HTTP ${response.status} ${response.statusText}`;
+        lastError = `HTTP ${response.status} ${response.statusText} at ${url}`;
       }
     } catch (err: any) {
       lastError = err?.message || 'Network error / CORS blocked';
@@ -100,7 +152,7 @@ export async function testPhpConnection(baseUrl: string): Promise<PhpConnectionR
 
   return {
     success: false,
-    message: `Connection failed: ${lastError}. Make sure config.php has correct DB credentials and CORS is enabled.`
+    message: `Connection failed (${lastError}). براہ کرم نیچے دی گئی 4 بنیادی وجوہات چیک کریں۔`
   };
 }
 

@@ -47,6 +47,7 @@ import { DataRecoveryModal } from './components/DataRecoveryModal';
 import { PhpServerModal } from './components/PhpServerModal';
 import { 
   pullAllDataFromPhp, 
+  pushAllDataToPhp,
   saveProductToPhp, 
   deleteProductFromPhp, 
   saveSaleToPhp, 
@@ -742,6 +743,27 @@ export default function App() {
         saveAppSettingsToCloud(backup.settings);
       }
     }
+
+    // If PHP MySQL backend is configured, push the restored data to MySQL
+    if (settings.phpBackendUrl && settings.autoSyncPhp !== false) {
+      const mergedBalMap = backup.dailyBalances && Array.isArray(backup.dailyBalances) 
+        ? Object.fromEntries(backup.dailyBalances.map((b) => [b.date, b]))
+        : dailyBalances;
+
+      pushAllDataToPhp(settings.phpBackendUrl, {
+        transactions: backup.transactions || transactions,
+        products: backup.products || products,
+        productSales: backup.productSales || productSales,
+        suppliers: backup.suppliers || suppliers,
+        mobilePurchases: backup.mobilePurchases || mobilePurchases,
+        dailyBalances: mergedBalMap,
+        settings: backup.settings || settings
+      }).then((res) => {
+        if (res.success) {
+          console.log('Restored shop data successfully synced to MySQL server');
+        }
+      }).catch((e) => console.warn('PHP restore push notice:', e));
+    }
   };
 
   // Restore & Reset
@@ -1025,6 +1047,7 @@ export default function App() {
                 onSaveSettings={handleSaveSettings}
                 transactions={transactions}
                 onRestoreData={handleRestoreData}
+                onRestoreCompleteBackup={handleRestoreCompleteBackup}
                 onResetData={handleResetData}
                 onOpenPhpModal={() => setIsPhpModalOpen(true)}
                 shopData={{
@@ -1172,6 +1195,7 @@ export default function App() {
             mobilePurchases={mobilePurchases}
             dailyBalances={dailyBalances}
             onApplyRemoteData={handleApplyRemoteData}
+            onRestoreCompleteBackup={handleRestoreCompleteBackup}
           />
         </>
       )}

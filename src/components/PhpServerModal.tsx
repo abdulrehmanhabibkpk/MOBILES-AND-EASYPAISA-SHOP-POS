@@ -13,10 +13,14 @@ import {
   Check, 
   X, 
   ShieldCheck,
-  Zap
+  Zap,
+  UploadCloud,
+  FileArchive
 } from 'lucide-react';
 import { AppSettings, Product, ProductSale, Transaction, Supplier, MobilePurchaseRecord, DailyBalance } from '../types';
+import { CompleteShopBackup } from '../lib/autoBackupManager';
 import { testPhpConnection, pushAllDataToPhp, pullAllDataFromPhp, PhpConnectionResult } from '../lib/phpApiClient';
+import { downloadHostingDeploymentZip } from '../lib/zipExporter';
 
 interface PhpServerModalProps {
   isOpen: boolean;
@@ -30,6 +34,7 @@ interface PhpServerModalProps {
   mobilePurchases: MobilePurchaseRecord[];
   dailyBalances: Record<string, DailyBalance>;
   onApplyRemoteData?: (data: any) => void;
+  onRestoreCompleteBackup?: (backup: CompleteShopBackup) => Promise<void> | void;
 }
 
 export const PhpServerModal: React.FC<PhpServerModalProps> = ({
@@ -43,7 +48,8 @@ export const PhpServerModal: React.FC<PhpServerModalProps> = ({
   suppliers,
   mobilePurchases,
   dailyBalances,
-  onApplyRemoteData
+  onApplyRemoteData,
+  onRestoreCompleteBackup
 }) => {
   const [urlInput, setUrlInput] = useState(settings.phpBackendUrl || '');
   const [autoSync, setAutoSync] = useState(settings.autoSyncPhp ?? true);
@@ -54,8 +60,29 @@ export const PhpServerModal: React.FC<PhpServerModalProps> = ({
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [activeGuideTab, setActiveGuideTab] = useState<'infinity' | 'hostinger' | 'files'>('infinity');
   const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [downloadingZip, setDownloadingZip] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleDownloadDeployZip = async () => {
+    setDownloadingZip(true);
+    setStatusMessage({ type: 'info', text: 'ہوسٹنگ کے لیے ریڈی ٹو اپلوڈ زپ فائل تیار ہو رہی ہے...' });
+    try {
+      const ok = await downloadHostingDeploymentZip();
+      if (ok) {
+        setStatusMessage({ 
+          type: 'success', 
+          text: '✅ زپ فائل (balal_pos_hosting_ready.zip) ڈاؤن لوڈ ہو گئی ہے! اسے کھول کر اپنی ہوسٹنگ (htdocs) پر اپلوڈ کریں۔' 
+        });
+      } else {
+        setStatusMessage({ type: 'error', text: 'زپ فائل بنانے میں دشواری پیش آئی۔' });
+      }
+    } catch (e) {
+      setStatusMessage({ type: 'error', text: 'زپ بنانے میں ایرر آیا۔' });
+    } finally {
+      setDownloadingZip(false);
+    }
+  };
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -204,6 +231,38 @@ export const PhpServerModal: React.FC<PhpServerModalProps> = ({
         {/* Modal Body */}
         <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
 
+          {/* Direct Download ZIP for InfinityFree / Hostinger */}
+          <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-cyan-950 border-2 border-emerald-500/50 rounded-2xl p-5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <FileArchive className="w-6 h-6" />
+                </span>
+                <div>
+                  <h3 className="text-base font-bold text-emerald-300 flex items-center gap-2">
+                    <span>ہوسٹنگ پر اپلوڈ کرنے والی تیار زپ فائل</span>
+                    <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full border border-emerald-500/40">
+                      1-Click Ready ZIP
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    اس زپ فائل کے اندر <strong className="text-white">index.html, assets, api, config.php, db.sql</strong> سب تیار موجود ہے۔
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleDownloadDeployZip}
+              disabled={downloadingZip}
+              className="w-full sm:w-auto px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-emerald-500/20 disabled:opacity-50 shrink-0 cursor-pointer"
+            >
+              <Download className={`w-5 h-5 ${downloadingZip ? 'animate-bounce' : ''}`} />
+              <span>{downloadingZip ? 'فائل تیار ہو رہی ہے...' : 'تیار زپ فائل ڈاؤن لوڈ کریں (.zip)'}</span>
+            </button>
+          </div>
+
           {/* Quota Freedom Callout */}
           <div className="bg-gradient-to-r from-emerald-900/30 to-teal-900/20 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
             <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0 mt-0.5" />
@@ -242,9 +301,21 @@ export const PhpServerModal: React.FC<PhpServerModalProps> = ({
                 <span>{testing ? 'ٹیسٹ ہو رہا ہے...' : 'ٹیسٹ کنکشن'}</span>
               </button>
             </div>
-            <p className="text-xs text-slate-400">
-              مثال: <code className="text-emerald-300">https://my-shop.infinityfreeapp.com/api</code> یا <code className="text-emerald-300">https://myshop.com/api</code>
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+              <p>
+                مثال: <code className="text-emerald-300">/api</code> یا <code className="text-emerald-300">https://myshop.com/api</code>
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setUrlInput('/api');
+                }}
+                className="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded border border-slate-700 transition-colors"
+                title="اگر آپ نے پورا سافٹ ویئر اپنی ہوسٹنگ پر اپلوڈ کیا ہے تو /api استعمال کریں"
+              >
+                ⚡ اسی ہوسٹنگ کا خودکار لوکل لنک لگائیں (/api)
+              </button>
+            </div>
 
             {/* Auto-Sync Checkbox */}
             <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between">
@@ -267,17 +338,43 @@ export const PhpServerModal: React.FC<PhpServerModalProps> = ({
 
           {/* Test Result Box */}
           {testResult && (
-            <div className={`p-4 rounded-xl border ${testResult.success ? 'bg-emerald-950/40 border-emerald-500/40' : 'bg-red-950/40 border-red-500/40'} space-y-2`}>
-              <div className="flex items-center gap-2">
+            <div className={`p-4 rounded-xl border ${testResult.success ? 'bg-emerald-950/40 border-emerald-500/40' : 'bg-red-950/40 border-red-500/40'} space-y-3`}>
+              <div className="flex items-start gap-2.5">
                 {testResult.success ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                 ) : (
-                  <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+                  <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                 )}
-                <span className={`text-sm font-semibold ${testResult.success ? 'text-emerald-300' : 'text-red-300'}`}>
-                  {testResult.message}
-                </span>
+                <div className="space-y-1">
+                  <span className={`text-sm font-semibold block ${testResult.success ? 'text-emerald-300' : 'text-red-300'}`}>
+                    {testResult.message}
+                  </span>
+                  {!testResult.success && urlInput && (
+                    <div className="pt-1 flex flex-wrap gap-2 text-xs">
+                      <a
+                        href={urlInput.trim().endsWith('.php') ? urlInput.trim() : `${urlInput.trim().replace(/\/+$/, '')}/health.php`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 flex items-center gap-1 underline"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>براؤزر کے نئے ٹیب میں براہ راست لنک کھول کر چیک کریں</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {!testResult.success && (
+                <div className="bg-slate-900/80 p-3 rounded-lg border border-red-900/40 text-[11px] text-slate-300 space-y-1.5">
+                  <span className="font-bold text-amber-300 block">⚠️ خرابی حل کرنے کے 4 آسان نکات:</span>
+                  <p><strong>1. براؤزر میں ٹیسٹ:</strong> اوپر والے نیلے لنک پر کلک کریں۔ اگر وہاں <code className="text-emerald-400">"status":"HEALTHY"</code> آتا ہے لیکن یہاں نہیں آتا، تو اس کا مطلب ہے کہ مفت ہوسٹنگ (InfinityFree) بیرونی API کو بلاک کر رہی ہے۔</p>
+                  <p><strong>2. SSL / HTTPS:</strong> اگر آپ کے ڈومین پر SSL نہیں ہے تو <code className="text-amber-300">https://</code> کے بجائے <code className="text-amber-300">http://</code> لکھ کر ٹیسٹ کریں۔</p>
+                  <p><strong>3. فولڈر چیک کریں:</strong> اگر فائلیں سیدھی <code className="text-cyan-300">htdocs</code> میں ہیں تو ایڈریس <code className="text-cyan-300">http://limopos.xo.je/</code> ہوگا (بغیر <code className="text-cyan-300">/api</code> کے)۔</p>
+                  <p><strong>4. config.php:</strong> ڈیٹا بیس ہوسٹ (جیسے <code className="text-indigo-300">sql205.epizy.com</code>)، یوزر نیم اور پاس ورڈ درست درج کریں۔</p>
+                </div>
+              )}
+
               {testResult.success && testResult.stats && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-xs">
                   <div className="bg-slate-800/80 p-2 rounded-lg border border-slate-700 text-center">
@@ -318,7 +415,7 @@ export const PhpServerModal: React.FC<PhpServerModalProps> = ({
               type="button"
               onClick={handleSyncToMysql}
               disabled={syncing || testing}
-              className="py-3 px-4 bg-emerald-600/90 hover:bg-emerald-500 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 shadow-lg transition-all disabled:opacity-50"
+              className="py-3 px-4 bg-emerald-600/90 hover:bg-emerald-500 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 shadow-lg transition-all disabled:opacity-50 cursor-pointer"
             >
               <Database className={`w-4 h-4 ${syncing ? 'animate-bounce' : ''}`} />
               <span>{syncing ? 'منتقلی جاری ہے...' : 'تمام لوکل ڈیٹا MySQL میں سنک کریں'}</span>
@@ -328,11 +425,56 @@ export const PhpServerModal: React.FC<PhpServerModalProps> = ({
               type="button"
               onClick={handlePullFromMysql}
               disabled={pulling || testing}
-              className="py-3 px-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              className="py-3 px-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
             >
               <Download className={`w-4 h-4 ${pulling ? 'animate-spin' : ''}`} />
               <span>{pulling ? 'لوڈ ہو رہا ہے...' : 'سرور سے ڈیٹا ایپ میں لائیں (Restore)'}</span>
             </button>
+          </div>
+
+          {/* Direct Backup File (.json) Import to MySQL & App */}
+          <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <span className="text-xs font-bold text-slate-200 block">
+                کیا آپ کے پاس سافٹ ویئر کی بیک اپ فائل موجود ہے؟
+              </span>
+              <span className="text-[11px] text-slate-400">
+                یہاں سے JSON بیک اپ فائل منتخب کریں تاکہ وہ ایپ اور پی ایچ پی سرور دونوں میں بحال ہو جائے
+              </span>
+            </div>
+
+            <label className="shrink-0 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md">
+              <UploadCloud className="w-4 h-4" />
+              <span>بیک اپ فائل اپلوڈ کریں (.json)</span>
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = async (ev) => {
+                      try {
+                        const parsed = JSON.parse(ev.target?.result as string);
+                        if (parsed && onRestoreCompleteBackup) {
+                          await onRestoreCompleteBackup(parsed);
+                          setStatusMessage({
+                            type: 'success',
+                            text: `بیک اپ فائل (${file.name}) سے تمام ڈیٹا ایپ اور پی ایچ پی سرور میں کامیابی سے بحال ہو گیا ہے!`
+                          });
+                        } else {
+                          setStatusMessage({ type: 'error', text: 'فائل کا فارمیٹ درست نہیں ہے۔' });
+                        }
+                      } catch (err) {
+                        setStatusMessage({ type: 'error', text: 'فائل پڑھنے میں غلطی پیش آئی۔' });
+                      }
+                    };
+                    reader.readAsText(file);
+                  }
+                }}
+              />
+            </label>
           </div>
 
           {/* Setup Guide Section */}

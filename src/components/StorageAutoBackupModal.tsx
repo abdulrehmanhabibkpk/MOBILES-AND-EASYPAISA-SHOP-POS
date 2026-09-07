@@ -587,29 +587,61 @@ export const StorageAutoBackupModal: React.FC<StorageAutoBackupModalProps> = ({
             )}
           </div>
 
-          {/* Quick Manual Snapshot Download */}
-          <div className={`p-3 rounded-xl border flex items-center justify-between ${
+          {/* Quick Manual Snapshot Download & Upload Restore */}
+          <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
             isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800/40 border-slate-700'
           }`}>
             <div className="flex items-center gap-2.5">
-              <Database className="w-4 h-4 text-purple-600" />
+              <Database className="w-5 h-5 text-purple-600 shrink-0" />
               <div>
                 <span className="text-xs font-bold block text-slate-800 dark:text-slate-200">
-                  Manual Backup File (.json)
+                  Manual Backup File (.json) - ڈاؤن لوڈ اور ڈیٹا بحالی
                 </span>
-                <span className="text-[10px] text-slate-500">
-                  کسی بھی وقت اپنے پورے شاپ کا مکمل بیک اپ سنگل کلک پر ڈاؤن لوڈ کریں
+                <span className="text-[11px] text-slate-500">
+                  اگر آپ کے پاس پہلے سے بیک اپ فائل ہے تو یہاں سے اپلوڈ کر کے پورا سافٹ ویئر بحال کریں
                 </span>
               </div>
             </div>
 
-            <button
-              onClick={handleDownloadSnapshot}
-              className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download Backup</span>
-            </button>
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+              <label className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
+                <UploadCloud className="w-3.5 h-3.5" />
+                <span>Upload & Restore Backup (.json)</span>
+                <input
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        try {
+                          const parsed = JSON.parse(ev.target?.result as string);
+                          if (parsed && onRestoreData) {
+                            onRestoreData(parsed);
+                            setRestoreFeedback(`بیک اپ فائل (${file.name}) کامیابی سے بحال ہو گئی ہے! تمام پراڈکٹس، سیلز اور کھاتہ بحال ہو گیا۔`);
+                          } else {
+                            alert('درست بیک اپ فائل منتخب کریں۔');
+                          }
+                        } catch (err) {
+                          alert('فائل پڑھنے میں غلطی پیش آئی۔');
+                        }
+                      };
+                      reader.readAsText(file);
+                    }
+                  }}
+                />
+              </label>
+
+              <button
+                onClick={handleDownloadSnapshot}
+                className="px-3.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download Backup</span>
+              </button>
+            </div>
           </div>
 
         </div>

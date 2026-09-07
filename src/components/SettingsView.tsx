@@ -66,6 +66,7 @@ interface SettingsViewProps {
   onSaveSettings: (settings: AppSettings) => void;
   transactions: Transaction[];
   onRestoreData: (transactions: Transaction[], settings: AppSettings) => void;
+  onRestoreCompleteBackup?: (backup: CompleteShopBackup) => Promise<void> | void;
   onResetData: () => void;
   shopData?: CompleteShopBackup;
   onOpenPhpModal?: () => void;
@@ -76,6 +77,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onSaveSettings,
   transactions,
   onRestoreData,
+  onRestoreCompleteBackup,
   onResetData,
   shopData,
   onOpenPhpModal,
@@ -247,17 +249,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handleExportJSON = () => {
-    const backupData = {
-      settings,
+    const backupData: CompleteShopBackup = shopData || {
+      version: '1.0.0',
+      appName: settings.shopName || 'Balal Mobiles & EasyPaisa Shop',
+      exportDate: new Date().toISOString(),
+      timestamp: Date.now(),
       transactions,
-      exportedAt: new Date().toISOString(),
-      protectedBy: 'Abdul Rahman Habib',
+      dailyBalances: [],
+      products: [],
+      productSales: [],
+      mobilePurchases: [],
+      suppliers: [],
+      settings,
     };
 
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
     const link = document.createElement('a');
     link.setAttribute('href', dataStr);
-    link.setAttribute('download', `EasyPaisa_Ledger_Backup_${new Date().toISOString().split('T')[0]}.json`);
+    link.setAttribute('download', `BalalMobiles_Complete_Backup_${new Date().toISOString().split('T')[0]}.json`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -266,18 +275,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileReader = new FileReader();
     if (e.target.files && e.target.files[0]) {
-      fileReader.readAsText(e.target.files[0], 'UTF-8');
+      const file = e.target.files[0];
+      fileReader.readAsText(file, 'UTF-8');
       fileReader.onload = (event) => {
         try {
           const parsed = JSON.parse(event.target?.result as string);
-          if (parsed.transactions && Array.isArray(parsed.transactions)) {
-            onRestoreData(parsed.transactions, parsed.settings || settings);
-            alert('Backup Data Successfully Restored!');
-          } else {
-            alert('Invalid Backup File Format!');
+          if (!parsed) {
+            alert('منتخب کردہ فائل خالی ہے یا درست نہیں ہے۔');
+            return;
           }
-        } catch {
-          alert('Error reading JSON File!');
+
+          // Case 1: Complete Shop Backup (contains products, sales, purchases, or suppliers)
+          if (onRestoreCompleteBackup && (parsed.products || parsed.productSales || parsed.mobilePurchases || parsed.suppliers || parsed.dailyBalances)) {
+            onRestoreCompleteBackup(parsed);
+            alert(`کامیابی: پورا شاپ ڈیٹا (${file.name}) کامیابی سے بحال (Restore) ہو گیا ہے!\nاسٹاک، سیلز انوائسز اور کھاتہ سب کچھ اپڈیٹ ہو گیا۔`);
+          }
+          // Case 2: Standard Transactions Backup
+          else if (parsed.transactions && Array.isArray(parsed.transactions)) {
+            onRestoreData(parsed.transactions, parsed.settings || settings);
+            alert(`کامیابی: ٹرانزیکشنز اور سیٹنگز کامیابی سے بحال ہو گئیں! (${file.name})`);
+          } else {
+            alert('فائل فارمیٹ درست نہیں ہے یا اس میں شاپ ریکارڈز موجود نہیں ہیں۔');
+          }
+        } catch (err) {
+          console.error(err);
+          alert('فائل پڑھنے میں غلطی پیش آئی۔ براہ کرم درست JSON بیک اپ فائل منتخب کریں۔');
         }
       };
     }
