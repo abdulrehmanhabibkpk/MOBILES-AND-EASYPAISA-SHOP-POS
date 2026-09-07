@@ -1,0 +1,6 @@
+{
+  "name": "PHP Mobile Shop Management System",
+  "description": "Pure PHP & MySQL inventory and POS shop management system with inline quick editing, IMEI tracking, and Google Drive cloud backups.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

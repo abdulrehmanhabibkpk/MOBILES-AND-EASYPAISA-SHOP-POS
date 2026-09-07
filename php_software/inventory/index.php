@@ -182,6 +182,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $successMsg = 'اسٹاک تعداد کامیابی سے اپڈیٹ ہو گئی!';
         }
+    } elseif ($action === 'quick_inline_update') {
+        $prodId = trim($_POST['id'] ?? '');
+        $cost = isset($_POST['purchase_price']) ? floatval($_POST['purchase_price']) : null;
+        $sale = isset($_POST['sale_price']) ? floatval($_POST['sale_price']) : null;
+        $stock = isset($_POST['stock']) ? intval($_POST['stock']) : null;
+
+        if (!empty($prodId)) {
+            $stmtGet = $pdo->prepare("SELECT * FROM products WHERE id = :id");
+            $stmtGet->execute([':id' => $prodId]);
+            $curr = $stmtGet->fetch();
+
+            if ($curr) {
+                $newCost = $cost !== null ? $cost : floatval($curr['purchase_price']);
+                $newSale = $sale !== null ? $sale : floatval($curr['sale_price']);
+                $newStock = $stock !== null ? max(0, $stock) : intval($curr['stock']);
+
+                $stmtUpd = $pdo->prepare("UPDATE products SET purchase_price = :cost, sale_price = :sale, stock = :stock WHERE id = :id");
+                $stmtUpd->execute([
+                    ':cost' => $newCost,
+                    ':sale' => $newSale,
+                    ':stock' => $newStock,
+                    ':id' => $prodId
+                ]);
+
+                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest' || isset($_POST['ajax'])) {
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'success' => true,
+                        'message' => "پروڈکٹ \"{$curr['name']}\" کے ریٹس اور اسٹاک کامیابی سے اپڈیٹ ہو گئے!",
+                        'data' => [
+                            'id' => $prodId,
+                            'purchase_price' => $newCost,
+                            'sale_price' => $newSale,
+                            'stock' => $newStock,
+                            'profit' => $newSale - $newCost,
+                            'total_val' => $newStock * $newCost
+                        ]
+                    ]);
+                    exit();
+                }
+                $successMsg = "پروڈکٹ \"{$curr['name']}\" کی قیمت اور اسٹاک فوری طور پر تبدیل ہو گیا!";
+            }
+        }
     } elseif ($action === 'save_bulk_stock') {
         $entryMode = $_POST['entry_mode'] ?? 'existing';
         $productId = trim($_POST['product_id'] ?? '');
@@ -764,26 +807,21 @@ $filteredProducts = $stmt->fetchAll();
                     <div class="flex items-center justify-between gap-1.5 pt-2 border-t border-slate-800/60">
                         <!-- Stock + / - -->
                         <div class="flex items-center gap-1">
-                            <form method="POST" class="inline">
-                                <input type="hidden" name="action" value="quick_stock">
-                                <input type="hidden" name="id" value="<?= $p['id'] ?>">
-                                <input type="hidden" name="delta" value="1">
-                                <button type="submit" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg border border-slate-700 font-bold flex items-center justify-center text-xs" title="1 دانہ بڑھائیں">+</button>
-                            </form>
-                            <form method="POST" class="inline">
-                                <input type="hidden" name="action" value="quick_stock">
-                                <input type="hidden" name="id" value="<?= $p['id'] ?>">
-                                <input type="hidden" name="delta" value="-1">
-                                <button type="submit" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-rose-400 rounded-lg border border-slate-700 font-bold flex items-center justify-center text-xs" title="1 دانہ گھٹائیں">-</button>
-                            </form>
+                            <button type="button" onclick="quickStockAjax('<?= $p['id'] ?>', 1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg border border-slate-700 font-bold flex items-center justify-center text-xs" title="1 دانہ بڑھائیں">+</button>
+                            <button type="button" onclick="quickStockAjax('<?= $p['id'] ?>', -1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-rose-400 rounded-lg border border-slate-700 font-bold flex items-center justify-center text-xs" title="1 دانہ گھٹائیں">-</button>
                         </div>
 
                         <!-- Edit & Delete & Bulk -->
                         <div class="flex items-center gap-1">
-                            <button type="button" onclick="openBulkForProduct(<?= $productJson ?>)" class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg border border-emerald-500/30" title="بلک اسٹاک و ملٹی IMEI شامل کریں">
-                                <i data-lucide="package-plus" class="w-3.5 h-3.5"></i>
+                            <button type="button" onclick="openInlineQuickEditModal(<?= $productJson ?>)" class="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg border border-amber-500/30" title="فوری ریٹ و اسٹاک تبدیل کریں">
+                                <i data-lucide="zap" class="w-3.5 h-3.5"></i>
                             </button>
-                            <button type="button" onclick="editProductModal(<?= $productJson ?>)" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-lg border border-slate-700" title="ایڈٹ کریں">
+                            <?php if ($p['category'] === 'MOBILES'): ?>
+                                <button type="button" onclick="openBulkForProduct(<?= $productJson ?>)" class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg border border-emerald-500/30" title="بلک اسٹاک و ملٹی IMEI شامل کریں">
+                                    <i data-lucide="package-plus" class="w-3.5 h-3.5"></i>
+                                </button>
+                            <?php endif; ?>
+                            <button type="button" onclick="editProductModal(<?= $productJson ?>)" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-lg border border-slate-700" title="مکمل ایڈٹ کریں">
                                 <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                             </button>
                             <button type="button" onclick="confirmDeleteProduct('<?= $p['id'] ?>', '<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>')" class="p-1.5 bg-slate-800 hover:bg-rose-950 text-rose-400 rounded-lg border border-slate-700" title="ڈیلیٹ کریں">
@@ -796,7 +834,7 @@ $filteredProducts = $stmt->fetchAll();
         <?php endforeach; ?>
     </div>
 <?php else: ?>
-    <!-- LIST VIEW (Default Dense & High Efficiency Table) -->
+    <!-- LIST VIEW (Default Dense & High Efficiency Table with Inline Quick Edit) -->
     <div class="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
         <div class="overflow-x-auto">
             <table class="w-full text-right text-xs">
@@ -811,7 +849,7 @@ $filteredProducts = $stmt->fetchAll();
                         <th class="p-3.5 text-left font-mono">منافع فی دانہ</th>
                         <th class="p-3.5 text-center">موجودہ اسٹاک</th>
                         <th class="p-3.5 text-left font-mono">کل اسٹاک مالیت</th>
-                        <th class="p-3.5 text-center no-print min-w-[140px]">ایکشنز</th>
+                        <th class="p-3.5 text-center no-print min-w-[160px]">ایکشنز (فوری تبدیل)</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60">
@@ -825,7 +863,7 @@ $filteredProducts = $stmt->fetchAll();
                         $totalVal = $stk * $cost;
                         $productJson = htmlspecialchars(json_encode($p), ENT_QUOTES, 'UTF-8');
                     ?>
-                        <tr class="hover:bg-slate-800/40 transition-colors group">
+                        <tr id="row-<?= $p['id'] ?>" class="hover:bg-slate-800/40 transition-colors group">
                             <!-- Index -->
                             <td class="p-3.5 pr-4 text-center font-mono font-bold text-slate-500"><?= $idx + 1 ?></td>
 
@@ -869,62 +907,97 @@ $filteredProducts = $stmt->fetchAll();
                             </td>
 
                             <!-- Purchase Cost -->
-                            <td class="p-3.5 text-left font-mono text-slate-400">
-                                Rs. <?= number_format($cost) ?>
+                            <td class="p-3.5 text-left font-mono">
+                                <div id="view-cost-<?= $p['id'] ?>" class="text-slate-400">
+                                    Rs. <?= number_format($cost) ?>
+                                </div>
+                                <div id="edit-cost-<?= $p['id'] ?>" class="hidden">
+                                    <div class="relative inline-block">
+                                        <span class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-500 font-bold pointer-events-none">Rs.</span>
+                                        <input type="number" step="any" id="input-cost-<?= $p['id'] ?>" value="<?= $cost ?>" oninput="calcInlineProfitPreview('<?= $p['id'] ?>')" onkeydown="if(event.key==='Enter') saveInlineQuickEdit('<?= $p['id'] ?>')" class="w-24 bg-slate-950 border border-slate-700 focus:border-cyan-500 pr-6 pl-1.5 py-1 rounded text-xs text-slate-200 font-mono font-bold text-left outline-none" title="خرید قیمت">
+                                    </div>
+                                </div>
                             </td>
 
                             <!-- Sale Price -->
-                            <td class="p-3.5 text-left font-mono font-bold text-white">
-                                Rs. <?= number_format($sale) ?>
+                            <td class="p-3.5 text-left font-mono">
+                                <div id="view-sale-<?= $p['id'] ?>" class="font-bold text-white">
+                                    Rs. <?= number_format($sale) ?>
+                                </div>
+                                <div id="edit-sale-<?= $p['id'] ?>" class="hidden">
+                                    <div class="relative inline-block">
+                                        <span class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-500 font-bold pointer-events-none">Rs.</span>
+                                        <input type="number" step="any" id="input-sale-<?= $p['id'] ?>" value="<?= $sale ?>" oninput="calcInlineProfitPreview('<?= $p['id'] ?>')" onkeydown="if(event.key==='Enter') saveInlineQuickEdit('<?= $p['id'] ?>')" class="w-24 bg-slate-950 border border-emerald-500/70 focus:border-emerald-400 pr-6 pl-1.5 py-1 rounded text-xs text-emerald-400 font-mono font-black text-left outline-none" title="فروخت قیمت">
+                                    </div>
+                                </div>
                             </td>
 
                             <!-- Unit Profit -->
-                            <td class="p-3.5 text-left font-mono font-bold text-teal-400">
+                            <td class="p-3.5 text-left font-mono font-bold text-teal-400" id="view-profit-<?= $p['id'] ?>">
                                 + Rs. <?= number_format($profitUnit) ?>
                             </td>
 
                             <!-- Current Stock -->
                             <td class="p-3.5 text-center">
-                                <span class="px-2.5 py-1 rounded-full font-black font-mono text-xs <?= $stk === 0 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : ($stk <= 3 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20') ?>">
-                                    <?= $stk ?> دانہ
-                                </span>
+                                <div id="view-stock-<?= $p['id'] ?>">
+                                    <span id="badge-stock-<?= $p['id'] ?>" class="px-2.5 py-1 rounded-full font-black font-mono text-xs <?= $stk === 0 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : ($stk <= 3 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20') ?>">
+                                        <?= $stk ?> دانہ
+                                    </span>
+                                </div>
+                                <div id="edit-stock-<?= $p['id'] ?>" class="hidden">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <button type="button" onclick="stepInlineStock('<?= $p['id'] ?>', -1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 text-rose-400 rounded text-xs font-bold border border-slate-700 flex items-center justify-center">-</button>
+                                        <input type="number" id="input-stock-<?= $p['id'] ?>" value="<?= $stk ?>" min="0" oninput="calcInlineProfitPreview('<?= $p['id'] ?>')" onkeydown="if(event.key==='Enter') saveInlineQuickEdit('<?= $p['id'] ?>')" class="w-14 bg-slate-950 border border-cyan-500/70 focus:border-cyan-400 px-1 py-1 rounded text-xs text-cyan-300 font-mono font-black text-center outline-none" title="اسٹاک تعداد">
+                                        <button type="button" onclick="stepInlineStock('<?= $p['id'] ?>', 1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded text-xs font-bold border border-slate-700 flex items-center justify-center">+</button>
+                                    </div>
+                                </div>
                             </td>
 
                             <!-- Stock Value -->
-                            <td class="p-3.5 text-left font-mono text-slate-300">
+                            <td class="p-3.5 text-left font-mono text-slate-300" id="view-totalval-<?= $p['id'] ?>">
                                 Rs. <?= number_format($totalVal) ?>
                             </td>
 
                             <!-- Actions -->
                             <td class="p-3.5 text-center no-print">
-                                <div class="flex items-center justify-center gap-1">
-                                    <!-- Stock Quick Adjust -->
-                                    <form method="POST" class="inline">
-                                        <input type="hidden" name="action" value="quick_stock">
-                                        <input type="hidden" name="id" value="<?= $p['id'] ?>">
-                                        <input type="hidden" name="delta" value="1">
-                                        <button type="submit" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-md border border-slate-700 font-bold flex items-center justify-center text-xs" title="1 دانہ بڑھائیں">+</button>
-                                    </form>
-                                    <form method="POST" class="inline">
-                                        <input type="hidden" name="action" value="quick_stock">
-                                        <input type="hidden" name="id" value="<?= $p['id'] ?>">
-                                        <input type="hidden" name="delta" value="-1">
-                                        <button type="submit" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 text-rose-400 rounded-md border border-slate-700 font-bold flex items-center justify-center text-xs" title="1 دانہ گھٹائیں">-</button>
-                                    </form>
-
-                                    <!-- Bulk Multi-IMEI -->
-                                    <button type="button" onclick="openBulkForProduct(<?= $productJson ?>)" class="p-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-md border border-emerald-500/30" title="بلک اسٹاک و ملٹی IMEI شامل کریں">
-                                        <i data-lucide="package-plus" class="w-3.5 h-3.5"></i>
+                                <!-- Default Actions -->
+                                <div id="default-actions-<?= $p['id'] ?>" class="flex items-center justify-center gap-1">
+                                    <!-- Inline Quick Edit Toggle Button -->
+                                    <button type="button" onclick="toggleQuickEditRow('<?= $p['id'] ?>')" class="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-md border border-amber-500/30 flex items-center gap-1 font-bold text-[11px] transition-all hover:scale-105 active:scale-95" title="فوری ریٹ و اسٹاک تبدیل کریں">
+                                        <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+                                        <span class="hidden xl:inline">فوری ایڈٹ</span>
                                     </button>
 
-                                    <!-- Edit -->
-                                    <button type="button" onclick="editProductModal(<?= $productJson ?>)" class="p-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-md border border-slate-700" title="ایڈٹ کریں">
+                                    <!-- Quick Stock Steppers (Direct AJAX) -->
+                                    <button type="button" onclick="quickStockAjax('<?= $p['id'] ?>', 1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-md border border-slate-700 font-bold flex items-center justify-center text-xs" title="1 دانہ بڑھائیں">+</button>
+                                    <button type="button" onclick="quickStockAjax('<?= $p['id'] ?>', -1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 text-rose-400 rounded-md border border-slate-700 font-bold flex items-center justify-center text-xs" title="1 دانہ گھٹائیں">-</button>
+
+                                    <!-- Bulk Multi-IMEI -->
+                                    <?php if ($p['category'] === 'MOBILES'): ?>
+                                        <button type="button" onclick="openBulkForProduct(<?= $productJson ?>)" class="p-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-md border border-emerald-500/30" title="بلک اسٹاک و ملٹی IMEI شامل کریں">
+                                            <i data-lucide="package-plus" class="w-3.5 h-3.5"></i>
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <!-- Full Edit Modal -->
+                                    <button type="button" onclick="editProductModal(<?= $productJson ?>)" class="p-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-md border border-slate-700" title="مکمل تفصیلات ایڈٹ کریں">
                                         <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                                     </button>
 
                                     <!-- Delete -->
                                     <button type="button" onclick="confirmDeleteProduct('<?= $p['id'] ?>', '<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>')" class="p-1 bg-slate-800 hover:bg-rose-950 text-rose-400 rounded-md border border-slate-700" title="ڈیلیٹ کریں">
                                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Inline Quick Edit Active State Actions -->
+                                <div id="edit-actions-<?= $p['id'] ?>" class="hidden items-center justify-center gap-1.5">
+                                    <button type="button" onclick="saveInlineQuickEdit('<?= $p['id'] ?>')" id="btn-save-<?= $p['id'] ?>" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-[11px] font-bold flex items-center gap-1 shadow transition-all active:scale-95">
+                                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                        <span>محفوظ</span>
+                                    </button>
+                                    <button type="button" onclick="cancelQuickEditRow('<?= $p['id'] ?>')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md text-[11px] font-bold transition-all">
+                                        <span>منسوخ</span>
                                     </button>
                                 </div>
                             </td>
@@ -1974,11 +2047,461 @@ function handleBulkFormSubmit(e) {
     return true;
 }
 
+// ==========================================================
+// INLINE QUICK-EDIT & AJAX ACTIONS
+// ==========================================================
+
+function toggleQuickEditRow(id) {
+    const vCost = document.getElementById('view-cost-' + id);
+    const eCost = document.getElementById('edit-cost-' + id);
+    const vSale = document.getElementById('view-sale-' + id);
+    const eSale = document.getElementById('edit-sale-' + id);
+    const vStock = document.getElementById('view-stock-' + id);
+    const eStock = document.getElementById('edit-stock-' + id);
+    const dActions = document.getElementById('default-actions-' + id);
+    const eActions = document.getElementById('edit-actions-' + id);
+    const row = document.getElementById('row-' + id);
+
+    if (!eCost || !eSale) return;
+
+    const isEditing = !eCost.classList.contains('hidden');
+
+    if (!isEditing) {
+        // Switch to inline editing mode
+        vCost.classList.add('hidden');
+        eCost.classList.remove('hidden');
+
+        vSale.classList.add('hidden');
+        eSale.classList.remove('hidden');
+
+        vStock.classList.add('hidden');
+        eStock.classList.remove('hidden');
+
+        dActions.classList.add('hidden');
+        eActions.classList.remove('hidden');
+        eActions.classList.add('flex');
+
+        if (row) {
+            row.classList.add('bg-amber-950/20', 'border-y', 'border-amber-500/40');
+        }
+
+        // Focus sale price
+        const inpSale = document.getElementById('input-sale-' + id);
+        if (inpSale) {
+            inpSale.focus();
+            inpSale.select();
+        }
+    } else {
+        cancelQuickEditRow(id);
+    }
+}
+
+function cancelQuickEditRow(id) {
+    const vCost = document.getElementById('view-cost-' + id);
+    const eCost = document.getElementById('edit-cost-' + id);
+    const vSale = document.getElementById('view-sale-' + id);
+    const eSale = document.getElementById('edit-sale-' + id);
+    const vStock = document.getElementById('view-stock-' + id);
+    const eStock = document.getElementById('edit-stock-' + id);
+    const dActions = document.getElementById('default-actions-' + id);
+    const eActions = document.getElementById('edit-actions-' + id);
+    const row = document.getElementById('row-' + id);
+
+    if (vCost) vCost.classList.remove('hidden');
+    if (eCost) eCost.classList.add('hidden');
+    if (vSale) vSale.classList.remove('hidden');
+    if (eSale) eSale.classList.add('hidden');
+    if (vStock) vStock.classList.remove('hidden');
+    if (eStock) eStock.classList.add('hidden');
+    if (dActions) dActions.classList.remove('hidden');
+    if (eActions) {
+        eActions.classList.add('hidden');
+        eActions.classList.remove('flex');
+    }
+    if (row) {
+        row.classList.remove('bg-amber-950/20', 'border-y', 'border-amber-500/40');
+    }
+}
+
+function stepInlineStock(id, delta) {
+    const inp = document.getElementById('input-stock-' + id);
+    if (inp) {
+        let val = parseInt(inp.value) || 0;
+        val = Math.max(0, val + delta);
+        inp.value = val;
+        calcInlineProfitPreview(id);
+    }
+}
+
+function calcInlineProfitPreview(id) {
+    const cost = parseFloat(document.getElementById('input-cost-' + id)?.value) || 0;
+    const sale = parseFloat(document.getElementById('input-sale-' + id)?.value) || 0;
+    const stock = parseInt(document.getElementById('input-stock-' + id)?.value) || 0;
+
+    const profit = sale - cost;
+    const totalVal = stock * cost;
+
+    const vProfit = document.getElementById('view-profit-' + id);
+    if (vProfit) {
+        vProfit.textContent = (profit >= 0 ? '+ ' : '') + 'Rs. ' + profit.toLocaleString();
+        vProfit.className = 'p-3.5 text-left font-mono font-bold ' + (profit >= 0 ? 'text-teal-400' : 'text-rose-400');
+    }
+
+    const vTotalVal = document.getElementById('view-totalval-' + id);
+    if (vTotalVal) {
+        vTotalVal.textContent = 'Rs. ' + totalVal.toLocaleString();
+    }
+}
+
+function saveInlineQuickEdit(id) {
+    const cost = parseFloat(document.getElementById('input-cost-' + id)?.value) || 0;
+    const sale = parseFloat(document.getElementById('input-sale-' + id)?.value) || 0;
+    const stock = parseInt(document.getElementById('input-stock-' + id)?.value) || 0;
+    const saveBtn = document.getElementById('btn-save-' + id);
+
+    if (sale <= 0) {
+        showToastNotification('براہ کرم درست فروخت قیمت درج کریں!', 'error');
+        return;
+    }
+
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="animate-spin inline-block mr-1">⏳</span> محفوظ ہو رہا ہے...';
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'quick_inline_update');
+    formData.append('id', id);
+    formData.append('purchase_price', cost);
+    formData.append('sale_price', sale);
+    formData.append('stock', stock);
+    formData.append('ajax', '1');
+
+    fetch('index.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Update table text labels
+            const vCost = document.getElementById('view-cost-' + id);
+            const vSale = document.getElementById('view-sale-' + id);
+            const badgeStock = document.getElementById('badge-stock-' + id);
+            const vProfit = document.getElementById('view-profit-' + id);
+            const vTotalVal = document.getElementById('view-totalval-' + id);
+
+            if (vCost) vCost.textContent = 'Rs. ' + cost.toLocaleString();
+            if (vSale) vSale.textContent = 'Rs. ' + sale.toLocaleString();
+            if (badgeStock) {
+                badgeStock.textContent = stock + ' دانہ';
+                badgeStock.className = 'px-2.5 py-1 rounded-full font-black font-mono text-xs ' + 
+                    (stock === 0 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 
+                    (stock <= 3 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 
+                    'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'));
+            }
+
+            const profit = sale - cost;
+            if (vProfit) {
+                vProfit.textContent = (profit >= 0 ? '+ ' : '') + 'Rs. ' + profit.toLocaleString();
+            }
+            if (vTotalVal) {
+                vTotalVal.textContent = 'Rs. ' + (stock * cost).toLocaleString();
+            }
+
+            // Close inline editor
+            cancelQuickEditRow(id);
+            showToastNotification('پروڈکٹ کی قیمت اور اسٹاک کامیابی سے محفوظ ہو گیا!', 'success');
+        } else {
+            showToastNotification('خرابی: ' + (data.error || 'محفوظ نہیں ہو سکا'), 'error');
+        }
+    })
+    .catch(err => {
+        showToastNotification('سرور کنکشن خرابی: ' + err.message, 'error');
+    })
+    .finally(() => {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i><span>محفوظ</span>';
+            if (window.lucide) window.lucide.createIcons();
+        }
+    });
+}
+
+function quickStockAjax(id, delta) {
+    const formData = new FormData();
+    formData.append('action', 'quick_stock');
+    formData.append('id', id);
+    formData.append('delta', delta);
+
+    fetch('index.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(() => {
+        const badgeStock = document.getElementById('badge-stock-' + id);
+        const inputStock = document.getElementById('input-stock-' + id);
+        const viewCost = document.getElementById('input-cost-' + id);
+        const cost = parseFloat(viewCost?.value) || 0;
+
+        let currentVal = parseInt(inputStock ? inputStock.value : (badgeStock ? badgeStock.textContent : 0)) || 0;
+        let newVal = Math.max(0, currentVal + delta);
+
+        if (inputStock) inputStock.value = newVal;
+        if (badgeStock) {
+            badgeStock.textContent = newVal + ' دانہ';
+            badgeStock.className = 'px-2.5 py-1 rounded-full font-black font-mono text-xs ' + 
+                (newVal === 0 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 
+                (newVal <= 3 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 
+                'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'));
+        }
+
+        const vTotalVal = document.getElementById('view-totalval-' + id);
+        if (vTotalVal) {
+            vTotalVal.textContent = 'Rs. ' + (newVal * cost).toLocaleString();
+        }
+
+        showToastNotification(`اسٹاک میں ${delta > 0 ? '+1' : '-1'} دانہ اپڈیٹ ہو گیا! نیا اسٹاک: ${newVal}`, 'success');
+    })
+    .catch(err => {
+        showToastNotification('اسٹاک اپڈیٹ میں خرابی!', 'error');
+    });
+}
+
+// ==========================================================
+// COMPACT QUICK-EDIT MODAL (For Grid Cards & Mobile Screens)
+// ==========================================================
+let compactEditCurrentProduct = null;
+
+function openInlineQuickEditModal(product) {
+    compactEditCurrentProduct = product;
+    document.getElementById('compactEditProdId').value = product.id;
+    document.getElementById('compactEditProdName').textContent = product.name;
+    document.getElementById('compactEditProdSku').textContent = product.sku || product.imei_or_serial || '—';
+    document.getElementById('compactEditCost').value = product.purchase_price || 0;
+    document.getElementById('compactEditSale').value = product.sale_price || 0;
+    document.getElementById('compactEditStock').value = product.stock || 0;
+
+    calcCompactProfitPreview();
+
+    const m = document.getElementById('compactQuickEditModal');
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+    if (window.lucide) window.lucide.createIcons();
+
+    setTimeout(() => {
+        const saleInp = document.getElementById('compactEditSale');
+        if (saleInp) {
+            saleInp.focus();
+            saleInp.select();
+        }
+    }, 100);
+}
+
+function closeInlineQuickEditModal() {
+    const m = document.getElementById('compactQuickEditModal');
+    m.classList.remove('flex');
+    m.classList.add('hidden');
+}
+
+function calcCompactProfitPreview() {
+    const cost = parseFloat(document.getElementById('compactEditCost').value) || 0;
+    const sale = parseFloat(document.getElementById('compactEditSale').value) || 0;
+    const stock = parseInt(document.getElementById('compactEditStock').value) || 0;
+
+    const profit = sale - cost;
+    const totalVal = stock * cost;
+
+    document.getElementById('compactPreviewProfit').textContent = (profit >= 0 ? '+ ' : '') + 'Rs. ' + profit.toLocaleString();
+    document.getElementById('compactPreviewProfit').className = 'font-mono font-bold text-xs ' + (profit >= 0 ? 'text-teal-400' : 'text-rose-400');
+    document.getElementById('compactPreviewTotalVal').textContent = 'Rs. ' + totalVal.toLocaleString();
+}
+
+function stepCompactStock(delta) {
+    const inp = document.getElementById('compactEditStock');
+    let val = parseInt(inp.value) || 0;
+    val = Math.max(0, val + delta);
+    inp.value = val;
+    calcCompactProfitPreview();
+}
+
+function saveCompactQuickEdit() {
+    const id = document.getElementById('compactEditProdId').value;
+    const cost = parseFloat(document.getElementById('compactEditCost').value) || 0;
+    const sale = parseFloat(document.getElementById('compactEditSale').value) || 0;
+    const stock = parseInt(document.getElementById('compactEditStock').value) || 0;
+    const btn = document.getElementById('compactSaveBtn');
+
+    if (sale <= 0) {
+        alert('براہ کرم درست فروخت قیمت درج کریں!');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'محفوظ ہو رہا ہے...';
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'quick_inline_update');
+    formData.append('id', id);
+    formData.append('purchase_price', cost);
+    formData.append('sale_price', sale);
+    formData.append('stock', stock);
+    formData.append('ajax', '1');
+
+    fetch('index.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            closeInlineQuickEditModal();
+            showToastNotification('قیمت اور اسٹاک کامیابی سے محفوظ ہو گیا!', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 600);
+        } else {
+            alert('خرابی: ' + (data.error || 'تبدیل نہیں ہو سکا'));
+        }
+    })
+    .catch(err => {
+        alert('سرور خرابی: ' + err.message);
+    })
+    .finally(() => {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'فوری محفوظ کریں';
+        }
+    });
+}
+
+// ==========================================================
+// TOAST NOTIFICATION SYSTEM
+// ==========================================================
+function showToastNotification(msg, type = 'success') {
+    let container = document.getElementById('toastNotificationContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastNotificationContainer';
+        container.className = 'fixed bottom-5 left-5 z-[9999] flex flex-col gap-2 max-w-sm pointer-events-none no-print';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    const isSuccess = (type === 'success');
+    toast.className = `p-3.5 rounded-2xl border shadow-2xl flex items-center gap-3 transition-all duration-300 transform translate-y-4 opacity-0 pointer-events-auto ${
+        isSuccess ? 'bg-slate-900/95 border-emerald-500/40 text-emerald-300' : 'bg-slate-900/95 border-rose-500/40 text-rose-300'
+    }`;
+    toast.innerHTML = `
+        <div class="p-1.5 rounded-xl ${isSuccess ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} shrink-0">
+            <i data-lucide="${isSuccess ? 'check-circle' : 'alert-triangle'}" class="w-4 h-4"></i>
+        </div>
+        <p class="text-xs font-bold">${htmlspecialchars(msg)}</p>
+    `;
+
+    container.appendChild(toast);
+    if (window.lucide) window.lucide.createIcons();
+
+    setTimeout(() => {
+        toast.classList.remove('translate-y-4', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+    }, 10);
+
+    setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-4', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+    }, 3500);
+}
+
 // Quick helper
 function htmlspecialchars(str) {
     if (!str) return '';
     return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 </script>
+
+<!-- ==========================================================
+     Modal: Compact Quick-Edit Popup (Lightweight & Instant)
+     ========================================================== -->
+<div id="compactQuickEditModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 no-print">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+        <!-- Header -->
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+            <div class="flex items-center gap-2.5">
+                <div class="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <i data-lucide="zap" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-black text-white">فوری ریٹ و اسٹاک تبدیل کریں</h3>
+                    <p class="text-[10px] text-slate-400 font-mono" id="compactEditProdSku">SKU-1234</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeInlineQuickEditModal()" class="text-slate-400 hover:text-white p-1 rounded-xl hover:bg-slate-800">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-5 space-y-4 bg-slate-900">
+            <input type="hidden" id="compactEditProdId">
+            <div>
+                <span class="text-[10px] text-slate-500 font-bold block">پروڈکٹ کا نام</span>
+                <p class="text-xs font-bold text-white mt-0.5 line-clamp-1" id="compactEditProdName">—</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-slate-400 text-xs font-bold mb-1">قیمت خرید (Cost)</label>
+                    <div class="relative">
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-bold pointer-events-none">Rs.</span>
+                        <input type="number" step="any" id="compactEditCost" oninput="calcCompactProfitPreview()" class="w-full bg-slate-950 border border-slate-700 text-white pr-9 pl-3 py-2 rounded-xl text-xs font-mono font-bold focus:border-cyan-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-400 text-xs font-bold mb-1">قیمت فروخت (Sale)</label>
+                    <div class="relative">
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-bold pointer-events-none">Rs.</span>
+                        <input type="number" step="any" id="compactEditSale" oninput="calcCompactProfitPreview()" class="w-full bg-slate-950 border border-emerald-500/70 text-emerald-400 pr-9 pl-3 py-2 rounded-xl text-xs font-mono font-black focus:border-emerald-400 outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-slate-400 text-xs font-bold mb-1">دستیاب اسٹاک تعداد (Quantity)</label>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="stepCompactStock(-1)" class="w-10 h-10 bg-slate-800 hover:bg-slate-700 text-rose-400 rounded-xl font-bold border border-slate-700 flex items-center justify-center text-base">-</button>
+                    <input type="number" min="0" id="compactEditStock" oninput="calcCompactProfitPreview()" class="flex-1 bg-slate-950 border border-cyan-500 text-cyan-300 py-2 rounded-xl text-center text-sm font-mono font-black outline-none">
+                    <button type="button" onclick="stepCompactStock(1)" class="w-10 h-10 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-xl font-bold border border-slate-700 flex items-center justify-center text-base">+</button>
+                </div>
+            </div>
+
+            <!-- Profit preview box -->
+            <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between text-xs">
+                <div>
+                    <span class="text-[10px] text-slate-500 block">متوقع منافع فی دانہ</span>
+                    <span id="compactPreviewProfit" class="font-mono font-bold text-teal-400">+ Rs. 0</span>
+                </div>
+                <div class="text-left">
+                    <span class="text-[10px] text-slate-500 block">کل لاگت مالیت</span>
+                    <span id="compactPreviewTotalVal" class="font-mono text-slate-300">Rs. 0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-slate-800 bg-slate-950 flex items-center justify-end gap-2">
+            <button type="button" onclick="closeInlineQuickEditModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl">منسوخ کریں</button>
+            <button type="button" id="compactSaveBtn" onclick="saveCompactQuickEdit()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-lg active:scale-95">
+                <i data-lucide="check" class="w-4 h-4"></i>
+                <span>فوری محفوظ کریں</span>
+            </button>
+        </div>
+    </div>
+</div>
 
 <?php require_once __DIR__ . '/../backend/footer.php'; ?>

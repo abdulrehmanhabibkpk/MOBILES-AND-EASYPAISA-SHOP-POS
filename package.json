@@ -1,0 +1,9 @@
+{
+  "name": "php-shop-management-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pure PHP Mobile Shop Management System",
+  "scripts": {
+    "build": "echo 'Build complete'"
+  }
+}
