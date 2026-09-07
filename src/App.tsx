@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Transaction, DailyBalance, AppSettings, Product, ProductSale, MobilePurchaseRecord, Supplier } from './types';
+import { Transaction, DailyBalance, AppSettings, Product, ProductSale, MobilePurchaseRecord, Supplier, ProductUnitItem } from './types';
 import { 
   getStoredTransactions, 
   saveTransactions, 
@@ -42,6 +42,19 @@ import {
   deleteSupplierFromCloud
 } from './lib/firebaseSync';
 import { ParsedStockItem } from './lib/stockDataHandler';
+import { BulkStockAdjustmentModal } from './components/BulkStockAdjustmentModal';
+import { DataRecoveryModal } from './components/DataRecoveryModal';
+import { PhpServerModal } from './components/PhpServerModal';
+import { 
+  pullAllDataFromPhp, 
+  saveProductToPhp, 
+  deleteProductFromPhp, 
+  saveSaleToPhp, 
+  saveTransactionToPhp, 
+  RemoteDataset 
+} from './lib/phpApiClient';
+import { backupEmergencySale, runCompleteDataRecovery } from './lib/dataRecovery';
+import { getLocalDateString } from './lib/dateUtils';
 
 import { LockScreen } from './components/LockScreen';
 import { LoginScreen } from './components/LoginScreen';
@@ -65,6 +78,8 @@ import { OpeningBalanceModal } from './components/OpeningBalanceModal';
 import { ReceiptVoucherModal } from './components/ReceiptVoucherModal';
 import { ProductInvoiceModal } from './components/ProductInvoiceModal';
 import { StorageAutoBackupModal } from './components/StorageAutoBackupModal';
+import { emergencyScanAndRecoverAll, vaultSaveEmergencySnapshot } from './lib/indexedDbVault';
+import { flushPendingSyncQueue } from './lib/offlineSyncManager';
 import { 
   initAutoBackupManager, 
   requestStoragePersistence, 
@@ -106,10 +121,63 @@ export default function App() {
   const [isOpeningModalOpen, setIsOpeningModalOpen] = useState(false);
   const [viewVoucherTrx, setViewVoucherTrx] = useState<Transaction | null>(null);
   const [isStorageModalOpen, setIsStorageModalOpen] = useState<boolean>(false);
+  const [isRecoveryModalOpen, setIsRecoveryModalOpen] = useState<boolean>(false);
+  const [isBulkStockModalOpen, setIsBulkStockModalOpen] = useState<boolean>(false);
+  const [bulkStockTargetProduct, setBulkStockTargetProduct] = useState<Product | null>(null);
+  const [isPhpModalOpen, setIsPhpModalOpen] = useState<boolean>(false);
 
-  // Today's date string
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Today's date string using timezone safe local date
+  const todayStr = getLocalDateString();
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+
+  // Emergency Startup Scan & Merge: Check IndexedDB Vault + LocalStorage snapshots
+  useEffect(() => {
+    emergencyScanAndRecoverAll().then((rec) => {
+      if (rec.recoveredSales.length > 0) {
+        setProductSales((prev) => {
+          const map = new Map<string, ProductSale>(prev.map(s => [s.id, s]));
+          rec.recoveredSales.forEach(s => map.set(s.id, s));
+          const list = (Array.from(map.values()) as ProductSale[]).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          saveProductSales(list);
+          return list;
+        });
+      }
+      if (rec.recoveredTransactions.length > 0) {
+        setTransactions((prev) => {
+          const map = new Map<string, Transaction>(prev.map(t => [t.id, t]));
+          rec.recoveredTransactions.forEach(t => map.set(t.id, t));
+          const list = (Array.from(map.values()) as Transaction[]).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          saveTransactions(list);
+          return list;
+        });
+      }
+      if (rec.recoveredProducts.length > 0) {
+        setProducts((prev) => {
+          const map = new Map<string, Product>(prev.map(p => [p.id, p]));
+          rec.recoveredProducts.forEach(p => map.set(p.id, p));
+          const list = Array.from(map.values()) as Product[];
+          saveProducts(list);
+          return list;
+        });
+      }
+    }).catch(console.error);
+
+    // Also attempt to flush any pending offline sync queue to Firestore
+    flushPendingSyncQueue().catch(() => {});
+  }, []);
+
+  // Continuous background snapshot into IndexedDB Vault for disaster recovery
+  useEffect(() => {
+    vaultSaveEmergencySnapshot({
+      transactions,
+      products,
+      productSales,
+      mobilePurchases,
+      suppliers,
+      dailyBalances,
+      settings,
+    }).catch(() => {});
+  }, [transactions, products, productSales, mobilePurchases, suppliers, dailyBalances, settings]);
 
   // Subscribe to Authentication changes
   useEffect(() => {
@@ -123,90 +191,55 @@ export default function App() {
     return () => unsubAuth();
   }, []);
 
-  // Subscribe to shared Firestore updates for all authenticated users
+  // Apply remote dataset from PHP / MySQL Server
+  const handleApplyRemoteData = (data: RemoteDataset) => {
+    if (Array.isArray(data.products) && data.products.length > 0) {
+      setProducts(data.products);
+      saveProducts(data.products);
+    }
+    if (Array.isArray(data.productSales) && data.productSales.length > 0) {
+      setProductSales(data.productSales);
+      saveProductSales(data.productSales);
+    }
+    if (Array.isArray(data.transactions) && data.transactions.length > 0) {
+      setTransactions(data.transactions);
+      saveTransactions(data.transactions);
+    }
+    if (Array.isArray(data.suppliers) && data.suppliers.length > 0) {
+      setSuppliers(data.suppliers);
+      saveSuppliers(data.suppliers);
+    }
+    if (Array.isArray(data.mobilePurchases) && data.mobilePurchases.length > 0) {
+      setMobilePurchases(data.mobilePurchases);
+      saveMobilePurchases(data.mobilePurchases);
+    }
+    if (data.dailyBalances && Object.keys(data.dailyBalances).length > 0) {
+      setDailyBalances(data.dailyBalances);
+      saveAllDailyBalances(data.dailyBalances);
+    }
+    if (data.settings && data.settings.shopName) {
+      const merged = { ...settings, ...data.settings };
+      setSettings(merged);
+      saveSettings(merged);
+    }
+  };
+
+  // Instant zero-wait startup: eliminate Firestore subscription quota blocks
   useEffect(() => {
-    testFirestoreConnection();
+    setLoading(false);
 
-    let completedStreams = 0;
-    const markStreamLoaded = () => {
-      completedStreams++;
-      // Once primary streams have reported their initial snapshot/error:
-      if (completedStreams >= 3) {
-        setLoading(false);
-      }
-    };
-
-    // Safety fallback: Never keep user waiting more than 1000ms if network is slow or offline
-    const fallbackTimer = setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-
-    const unsubProducts = subscribeProducts((remoteProducts) => {
-      markStreamLoaded();
-      if (Array.isArray(remoteProducts)) {
-        setProducts(remoteProducts);
-        saveProducts(remoteProducts);
-      }
-    }, () => markStreamLoaded());
-
-    const unsubSales = subscribeProductSales((remoteSales) => {
-      markStreamLoaded();
-      if (Array.isArray(remoteSales)) {
-        setProductSales(remoteSales);
-        saveProductSales(remoteSales);
-      }
-    }, () => markStreamLoaded());
-
-    const unsubPurchases = subscribeMobilePurchases((remotePurchases) => {
-      markStreamLoaded();
-      if (Array.isArray(remotePurchases)) {
-        setMobilePurchases(remotePurchases);
-        saveMobilePurchases(remotePurchases);
-      }
-    }, () => markStreamLoaded());
-
-    const unsubSuppliers = subscribeSuppliers((remoteSuppliers) => {
-      markStreamLoaded();
-      if (Array.isArray(remoteSuppliers)) {
-        setSuppliers(remoteSuppliers);
-        saveSuppliers(remoteSuppliers);
-      }
-    }, () => markStreamLoaded());
-
-    const unsubTrx = subscribeTransactions((remoteTrx) => {
-      markStreamLoaded();
-      if (Array.isArray(remoteTrx)) {
-        setTransactions(remoteTrx);
-        saveTransactions(remoteTrx);
-      }
-    }, () => markStreamLoaded());
-
-    const unsubBalances = subscribeDailyBalances((remoteBalances) => {
-      markStreamLoaded();
-      if (remoteBalances && Object.keys(remoteBalances).length > 0) {
-        setDailyBalances(remoteBalances);
-        saveAllDailyBalances(remoteBalances);
-      }
-    }, () => markStreamLoaded());
-
-    const unsubSettings = subscribeAppSettings((remoteSettings) => {
-      markStreamLoaded();
-      if (remoteSettings && remoteSettings.shopName) {
-        setSettings(remoteSettings);
-        saveSettings(remoteSettings);
-      }
-    }, () => markStreamLoaded());
-
-    return () => {
-      clearTimeout(fallbackTimer);
-      unsubProducts();
-      unsubSales();
-      unsubPurchases();
-      unsubSuppliers();
-      unsubTrx();
-      unsubBalances();
-      unsubSettings();
-    };
+    // If PHP Backend is connected and autoSync is on, perform non-blocking sync
+    if (settings.phpBackendUrl && settings.autoSyncPhp !== false) {
+      pullAllDataFromPhp(settings.phpBackendUrl)
+        .then((res) => {
+          if (res.success && res.data) {
+            handleApplyRemoteData(res.data);
+          }
+        })
+        .catch((err) => {
+          console.warn('PHP backend initial pull notice:', err);
+        });
+    }
   }, []);
 
 
@@ -309,6 +342,7 @@ export default function App() {
 
   // Add or Edit Transaction
   const handleSaveTransaction = (trxData: Omit<Transaction, 'id' | 'createdAt'>) => {
+    let savedTrx: Transaction;
     if (editingTrx) {
       const updatedTrx: Transaction = { ...trxData, id: editingTrx.id, createdAt: editingTrx.createdAt };
       const updated = transactions.map((t) =>
@@ -316,6 +350,7 @@ export default function App() {
       );
       setTransactions(updated);
       setEditingTrx(null);
+      savedTrx = updatedTrx;
       if (isAuthenticated) {
         saveTransactionToCloud(updatedTrx);
       }
@@ -326,26 +361,69 @@ export default function App() {
         createdAt: Date.now(),
       };
       setTransactions([newTrx, ...transactions]);
+      savedTrx = newTrx;
       if (isAuthenticated) {
         saveTransactionToCloud(newTrx);
       }
+    }
+    if (settings.phpBackendUrl && settings.autoSyncPhp !== false) {
+      saveTransactionToPhp(settings.phpBackendUrl, savedTrx).catch((e) => console.warn('PHP trx sync notice:', e));
     }
   };
 
   // Handle Product Sale Completion from POS Counter
   const handleCompleteProductSale = (sale: ProductSale, updatedProducts: Product[]) => {
+    // 1. Immediately record in product sales state & dual-persist to localStorage and IndexedDB Vault
+    setProductSales((prev) => {
+      const exists = prev.some(s => s.id === sale.id);
+      const updated = exists ? prev.map(s => s.id === sale.id ? sale : s) : [sale, ...prev];
+      saveProductSales(updated);
+      return updated;
+    });
+
+    // 2. Immediately update products state & dual-persist to localStorage and IndexedDB Vault
     setProducts(updatedProducts);
     saveProducts(updatedProducts);
-    if (isAuthenticated) {
-      // ONLY save the specific products that were sold, not entire inventory!
-      const soldProductIds = new Set(sale.items.map(item => item.productId));
-      const modifiedProducts = updatedProducts.filter(p => soldProductIds.has(p.id));
-      modifiedProducts.forEach((p) => saveProductToCloud(p));
-      saveProductSaleToCloud(sale);
-    }
 
-    // Open Print Bill Modal automatically!
+    // 3. Immediately save to Cloud (Firestore + Offline Queue)
+    const soldProductIds = new Set(sale.items.map(item => item.productId));
+    const modifiedProducts = updatedProducts.filter(p => soldProductIds.has(p.id));
+    modifiedProducts.forEach((p) => saveProductToCloud(p));
+    saveProductSaleToCloud(sale);
+
+    // 4. Also automatically record in Daily Cash Ledger / Transactions so Dashboard balance & profit update immediately!
+    const isDigital = sale.paymentMethod === 'EASYPAISA' || sale.paymentMethod === 'JAZZCASH' || sale.paymentMethod === 'BANK';
+    const saleTrx: Transaction = {
+      id: `trx-pos-${sale.id}`,
+      type: 'SELL_CASH',
+      customerName: sale.customerName || 'Walk-in Customer (POS)',
+      customerPhone: sale.customerPhone || '',
+      easyPaisaAmount: isDigital ? sale.netAmount : 0,
+      cashAmount: !isDigital ? sale.netAmount : 0,
+      expenseAmount: 0,
+      feeProfit: sale.profit || 0,
+      paymentMethod: sale.paymentMethod || 'CASH',
+      notes: `POS Bill #${sale.invoiceNo}: ${sale.items.map(i => `${i.quantity}x ${i.productName}`).join(', ')}`,
+      date: sale.date,
+      time: sale.time,
+      createdAt: sale.createdAt || Date.now(),
+    };
+
+    setTransactions((prev) => {
+      const exists = prev.some(t => t.id === saleTrx.id);
+      const updated = exists ? prev.map(t => t.id === saleTrx.id ? saleTrx : t) : [saleTrx, ...prev];
+      saveTransactions(updated);
+      return updated;
+    });
+    saveTransactionToCloud(saleTrx);
+
+    // 5. Open Print Bill Modal automatically!
     setActiveInvoiceSale(sale);
+
+    // 6. Automatically sync to PHP / MySQL backend if configured
+    if (settings.phpBackendUrl && settings.autoSyncPhp !== false) {
+      saveSaleToPhp(settings.phpBackendUrl, sale).catch((e) => console.warn('PHP sale sync notice:', e));
+    }
   };
 
   // Add or Update Mobile Purchase Record & sync with inventory stock and ledger
@@ -458,6 +536,7 @@ export default function App() {
   // Add / Edit Product in Stock
   const handleSaveProduct = (productData: Omit<Product, 'id' | 'createdAt'>, id?: string) => {
     let updatedProducts: Product[];
+    let savedProduct: Product;
     if (id) {
       const existing = products.find((p) => p.id === id);
       const updatedProduct: Product = {
@@ -466,6 +545,7 @@ export default function App() {
         createdAt: existing ? existing.createdAt : Date.now(),
       };
       updatedProducts = products.map((p) => (p.id === id ? updatedProduct : p));
+      savedProduct = updatedProduct;
       if (isAuthenticated) {
         saveProductToCloud(updatedProduct);
       }
@@ -476,12 +556,16 @@ export default function App() {
         createdAt: Date.now(),
       };
       updatedProducts = [newProduct, ...products];
+      savedProduct = newProduct;
       if (isAuthenticated) {
         saveProductToCloud(newProduct);
       }
     }
     setProducts(updatedProducts);
     saveProducts(updatedProducts);
+    if (settings.phpBackendUrl && settings.autoSyncPhp !== false) {
+      saveProductToPhp(settings.phpBackendUrl, savedProduct).catch((e) => console.warn('PHP product sync notice:', e));
+    }
   };
 
   // Delete Product from Stock
@@ -492,6 +576,9 @@ export default function App() {
       saveProducts(updated);
       if (isAuthenticated) {
         deleteProductFromCloud(id);
+      }
+      if (settings.phpBackendUrl && settings.autoSyncPhp !== false) {
+        deleteProductFromPhp(settings.phpBackendUrl, id).catch((e) => console.warn('PHP product delete notice:', e));
       }
     }
   };
@@ -680,6 +767,49 @@ export default function App() {
     setSettings(DEFAULT_SETTINGS);
   };
 
+  // Bulk Stock Adjustment & Multi-IMEI Entry (e.g. 10 Nokia phones at once)
+  const handleOpenBulkStock = (product?: Product) => {
+    setBulkStockTargetProduct(product || null);
+    setIsBulkStockModalOpen(true);
+  };
+
+  const handleSaveBulkStock = (
+    targetProduct: { isExisting: boolean; productId?: string; newProductData?: Omit<Product, 'id' | 'createdAt'> },
+    newUnits: ProductUnitItem[],
+    addedQuantity: number
+  ) => {
+    if (targetProduct.isExisting && targetProduct.productId) {
+      const existing = products.find((p) => p.id === targetProduct.productId);
+      if (existing) {
+        const existingUnits = existing.units || [];
+        const mergedUnits = [...newUnits, ...existingUnits];
+        const updatedProduct: Product = {
+          ...existing,
+          stock: existing.stock + addedQuantity,
+          units: mergedUnits,
+        };
+        const updatedList = products.map((p) => (p.id === updatedProduct.id ? updatedProduct : p));
+        setProducts(updatedList);
+        saveProducts(updatedList);
+        saveProductToCloud(updatedProduct);
+      }
+    } else if (targetProduct.newProductData) {
+      const newProduct: Product = {
+        ...targetProduct.newProductData,
+        id: `prod-${Date.now()}`,
+        createdAt: Date.now(),
+        stock: addedQuantity,
+        units: newUnits,
+      };
+      const updatedList = [newProduct, ...products];
+      setProducts(updatedList);
+      saveProducts(updatedList);
+      saveProductToCloud(newProduct);
+    }
+    setIsBulkStockModalOpen(false);
+    setBulkStockTargetProduct(null);
+  };
+
   const isLight = settings.theme === 'light';
 
   return (
@@ -748,6 +878,9 @@ export default function App() {
             }}
             onOpenOpeningBalance={() => setIsOpeningModalOpen(true)}
             onOpenAutoBackupModal={() => setIsStorageModalOpen(true)}
+            onOpenDataRecoveryModal={() => setIsRecoveryModalOpen(true)}
+            onOpenBulkStockModal={() => setIsBulkStockModalOpen(true)}
+            onOpenPhpModal={() => setIsPhpModalOpen(true)}
             onLogout={handleLogout}
             loading={loading}
           />
@@ -776,6 +909,8 @@ export default function App() {
                 }}
                 onOpenNewExpense={() => setIsExpenseModalOpen(true)}
                 onOpenOpeningBalance={() => setIsOpeningModalOpen(true)}
+                onOpenDataRecoveryModal={() => setIsRecoveryModalOpen(true)}
+                onOpenBulkStockModal={() => handleOpenBulkStock()}
                 onSelectTransaction={(trx) => setViewVoucherTrx(trx)}
                 onEditTransaction={(trx) => {
                   setEditingTrx(trx);
@@ -827,6 +962,8 @@ export default function App() {
                 onSaveProduct={handleSaveProduct}
                 onDeleteProduct={handleDeleteProduct}
                 onImportProducts={handleImportProducts}
+                onSaveTransaction={handleSaveTransaction}
+                onOpenBulkStockModal={handleOpenBulkStock}
                 settings={settings}
               />
             )}
@@ -889,6 +1026,7 @@ export default function App() {
                 transactions={transactions}
                 onRestoreData={handleRestoreData}
                 onResetData={handleResetData}
+                onOpenPhpModal={() => setIsPhpModalOpen(true)}
                 shopData={{
                   version: '1.0.0',
                   appName: settings.shopName || 'Balal Mobiles & EasyPaisa Shop',
@@ -967,6 +1105,73 @@ export default function App() {
               suppliers,
               settings,
             }}
+          />
+
+          <DataRecoveryModal
+            isOpen={isRecoveryModalOpen}
+            onClose={() => setIsRecoveryModalOpen(false)}
+            productSales={productSales}
+            transactions={transactions}
+            products={products}
+            settings={settings}
+            onDataRestored={(recovered) => {
+              if (recovered.sales && recovered.sales.length > 0) {
+                setProductSales((prev) => {
+                  const map = new Map<string, ProductSale>(prev.map(s => [s.id, s]));
+                  recovered.sales.forEach(s => map.set(s.id, s));
+                  const merged = (Array.from(map.values()) as ProductSale[]).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                  saveProductSales(merged);
+                  merged.forEach(s => saveProductSaleToCloud(s));
+                  return merged;
+                });
+              }
+              if (recovered.transactions && recovered.transactions.length > 0) {
+                setTransactions((prev) => {
+                  const map = new Map<string, Transaction>(prev.map(t => [t.id, t]));
+                  recovered.transactions.forEach(t => map.set(t.id, t));
+                  const merged = (Array.from(map.values()) as Transaction[]).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                  saveTransactions(merged);
+                  merged.forEach(t => saveTransactionToCloud(t));
+                  return merged;
+                });
+              }
+              if (recovered.products && recovered.products.length > 0) {
+                setProducts((prev) => {
+                  const map = new Map<string, Product>(prev.map(p => [p.id, p]));
+                  recovered.products.forEach(p => map.set(p.id, p));
+                  const merged = Array.from(map.values()) as Product[];
+                  saveProducts(merged);
+                  batchSaveProductsToCloud(merged);
+                  return merged;
+                });
+              }
+            }}
+          />
+
+          <BulkStockAdjustmentModal
+            isOpen={isBulkStockModalOpen}
+            onClose={() => {
+              setIsBulkStockModalOpen(false);
+              setBulkStockTargetProduct(null);
+            }}
+            products={products}
+            preSelectedProduct={bulkStockTargetProduct}
+            onSaveBulkStock={handleSaveBulkStock}
+            settings={settings}
+          />
+
+          <PhpServerModal
+            isOpen={isPhpModalOpen}
+            onClose={() => setIsPhpModalOpen(false)}
+            settings={settings}
+            onUpdateSettings={handleSaveSettings}
+            products={products}
+            productSales={productSales}
+            transactions={transactions}
+            suppliers={suppliers}
+            mobilePurchases={mobilePurchases}
+            dailyBalances={dailyBalances}
+            onApplyRemoteData={handleApplyRemoteData}
           />
         </>
       )}

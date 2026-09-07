@@ -1,4 +1,5 @@
 import { Transaction, Expense, DailyBalance, AppSettings, CustomerSummary, Product, ProductSale, MobilePurchaseRecord, Supplier } from '../types';
+import { vaultSaveAllSales, vaultSaveAllTransactions, vaultSaveAllProducts } from './indexedDbVault';
 
 const TRANSACTIONS_KEY = 'ep_ledger_transactions_v1';
 const EXPENSES_KEY = 'ep_ledger_expenses_v1';
@@ -40,22 +41,22 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 /**
  * Safe local storage setter with QuotaExceeded error handling
- * and automatic cleanup of non-critical heavy caches.
+ * and automatic cleanup of non-critical temporary keys only (NEVER sales or transactions!).
  */
 function safeSetItem(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
   } catch (err: any) {
     if (err && (err.name === 'QuotaExceededError' || err.code === 22 || err.number === -2147024882)) {
-      console.warn(`[LocalStorage] Quota exceeded on key "${key}". Cleaning up and retrying...`);
+      console.warn(`[LocalStorage] Quota exceeded on key "${key}". Cleaning temporary caches and retrying...`);
       try {
-        // Try trimming / cleaning old temporary keys if any
+        // ONLY clean non-critical disposable temp caches
         localStorage.removeItem('cached_heavy_photos');
         localStorage.removeItem('temp_print_data');
-        localStorage.removeItem(PRODUCT_SALES_KEY); // Will be restored lightweight
+        localStorage.removeItem('vite:react-refresh');
         localStorage.setItem(key, value);
       } catch (retryErr) {
-        console.error(`[LocalStorage] Unable to cache "${key}" due to storage limits. In-memory & Firebase will handle it.`, retryErr);
+        console.error(`[LocalStorage] Unable to write key "${key}". IndexedDB Vault will maintain data persistence.`, retryErr);
       }
     } else {
       console.error(`[LocalStorage] Error writing key "${key}":`, err);
@@ -95,6 +96,7 @@ export const getStoredTransactions = (): Transaction[] => {
 
 export const saveTransactions = (transactions: Transaction[]): void => {
   safeSetItem(TRANSACTIONS_KEY, JSON.stringify(transactions));
+  vaultSaveAllTransactions(transactions).catch(() => {});
 };
 
 export const getStoredExpenses = (): Expense[] => {
@@ -168,6 +170,7 @@ export const getStoredProducts = (): Product[] => {
 
 export const saveProducts = (products: Product[]): void => {
   safeSetItem(PRODUCTS_KEY, JSON.stringify(products));
+  vaultSaveAllProducts(products).catch(() => {});
 };
 
 export const getStoredProductSales = (): ProductSale[] => {
@@ -201,6 +204,7 @@ export const saveProductSales = (sales: ProductSale[]): void => {
     // If sales list is large (> 500 records), keep recent 300 in local storage (Firestore maintains complete history)
     const recordsToStore = lightweightSales.length > 400 ? lightweightSales.slice(-300) : lightweightSales;
     safeSetItem(PRODUCT_SALES_KEY, JSON.stringify(recordsToStore));
+    vaultSaveAllSales(sales).catch(() => {});
   } catch (err) {
     console.error("Failed to store sales in localStorage", err);
   }

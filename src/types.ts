@@ -158,6 +158,9 @@ export interface AppSettings {
   jazzCashNumber?: string;
   biometricUnlockEnabled?: boolean;
   allowedAccounts?: AllowedAccount[];
+  phpBackendUrl?: string;
+  autoSyncPhp?: boolean;
+  phpLastSyncedAt?: number;
 }
 
 export interface CustomerSummary {

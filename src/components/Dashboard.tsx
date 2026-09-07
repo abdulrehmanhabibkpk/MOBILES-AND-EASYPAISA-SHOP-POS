@@ -23,7 +23,10 @@ import {
   Settings,
   ShieldAlert,
   ChevronRight,
-  Edit2
+  Edit2,
+  ShieldCheck,
+  PackagePlus,
+  RefreshCw
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -53,6 +56,8 @@ interface DashboardProps {
   onOpenNewTransaction: () => void;
   onOpenNewExpense: () => void;
   onOpenOpeningBalance: () => void;
+  onOpenDataRecoveryModal?: () => void;
+  onOpenBulkStockModal?: () => void;
   onSelectTransaction: (trx: Transaction) => void;
   onEditTransaction: (trx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
@@ -70,6 +75,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenNewTransaction,
   onOpenNewExpense,
   onOpenOpeningBalance,
+  onOpenDataRecoveryModal,
+  onOpenBulkStockModal,
   onSelectTransaction,
   onEditTransaction,
   onDeleteTransaction,
@@ -206,7 +213,60 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
       
+      {/* Power Outage / Data Loss Rescue Alert Banner */}
+      {onOpenDataRecoveryModal && (
+        <div className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm ${
+          productSales.length === 0 
+            ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200' 
+            : isLight ? 'bg-blue-50/70 border-blue-200 text-blue-900' : 'bg-blue-950/20 border-blue-900/60 text-blue-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shrink-0 ${
+              productSales.length === 0 ? 'bg-amber-600' : 'bg-blue-600'
+            }`}>
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-black text-xs sm:text-sm">
+                  {productSales.length === 0
+                    ? (isEn ? 'No Sales Showing? Power Outage Recovery Available' : 'لائٹ جانے یا پی سی بند ہونے کے بعد سیلز شو نہیں ہو رہیں؟')
+                    : (isEn ? 'Data Loss Protection Active' : 'ڈیٹا پروٹیکشن و خودکار سیلز والٹ ایکٹو ہے')}
+                </span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                  productSales.length === 0 ? 'bg-amber-600 text-white animate-pulse' : 'bg-emerald-600 text-white'
+                }`}>
+                  {productSales.length} Total Sales in System
+                </span>
+              </div>
+              <p className="text-[11px] opacity-80 mt-0.5">
+                {productSales.length === 0
+                  ? 'پریشان نہ ہوں! ڈیٹا ریکوری بٹن دبائیں تاکہ سسٹم تمام 4 والٹس اور انوینٹری سے سیلز ڈھونڈ کر فوراً لے آئے۔'
+                  : 'تمام فروخت اور بل 4 محفوظ جگہوں (لوکل، انڈیکسڈ ڈی بی، انوینٹری، اور کلاؤڈ) پر محفوظ رہتے ہیں۔'}
+              </p>
+            </div>
+          </div>
 
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {onOpenBulkStockModal && (
+              <button
+                onClick={onOpenBulkStockModal}
+                className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <PackagePlus className="w-4 h-4" />
+                <span>بلک 10+ فون اینٹری</span>
+              </button>
+            )}
+            <button
+              onClick={onOpenDataRecoveryModal}
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-600/20 flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>گم شدہ سیلز ریکور کریں (Deep Recovery)</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 4 Primary Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -239,17 +299,35 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {isEn ? 'Product POS Sales' : 'سامان فروخت بل'}
             </span>
             <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-extrabold">
-              {dayProductSales.length} {isEn ? 'Bills' : 'بل'}
+              {dayProductSales.length} {isEn ? 'Today' : 'آج کے بل'}
             </span>
           </div>
           <div className="text-2xl sm:text-3xl font-black font-mono text-blue-600 dark:text-blue-400 mb-2">
             Rs. {totalProductRevenue.toLocaleString()}
           </div>
           <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span>{isEn ? 'Mobile & Accessories' : 'موبائل و ایکسیسریز'}</span>
-            <button onClick={() => onNavigateTab('pos')} className="text-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-0.5">
-              <span>POS</span> <ChevronRight className="w-3 h-3" />
-            </button>
+            <span>
+              {productSales.length > 0 ? (
+                <span className="font-semibold text-slate-600 dark:text-slate-400">
+                  کل ہسٹری: <strong>{productSales.length}</strong> سیلز
+                </span>
+              ) : (
+                <span>{isEn ? 'Mobile & Accessories' : 'موبائل و ایکسیسریز'}</span>
+              )}
+            </span>
+            <div className="flex items-center gap-2">
+              {onOpenDataRecoveryModal && productSales.length === 0 && (
+                <button
+                  onClick={onOpenDataRecoveryModal}
+                  className="text-blue-600 font-bold hover:underline text-[10px]"
+                >
+                  ریکور کریں
+                </button>
+              )}
+              <button onClick={() => onNavigateTab('sales')} className="text-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-0.5">
+                <span>سیلز کھاتہ</span> <ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         </div>
 

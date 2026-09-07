@@ -9,6 +9,7 @@ import { PAYMENT_CHANNELS } from '../lib/paymentChannels';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { UnitSelectorModal } from './UnitSelectorModal';
 import { useHardwareBarcodeScanner } from '../lib/useHardwareBarcodeScanner';
+import { getLocalDateString } from '../lib/dateUtils';
 
 interface PosViewProps {
   products: Product[];
@@ -192,7 +193,7 @@ export const PosView: React.FC<PosViewProps> = ({
 
     const invoiceNo = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
     const now = new Date();
-    const dateStr = now.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(now);
 
     const saleRecord: ProductSale = {
       id: `sale-${Date.now()}`,

@@ -108,7 +108,7 @@ export function subscribeProductSales(
 ) {
   const colPath = `${SHOP_PATH}/productSales`;
   try {
-    const q = query(collection(db, colPath), limit(150));
+    const q = query(collection(db, colPath), limit(1000));
     return onSnapshot(q, (snapshot) => {
       const sales: ProductSale[] = [];
       snapshot.forEach((docSnap) => {
@@ -147,7 +147,7 @@ export function subscribeTransactions(
 ) {
   const colPath = `${SHOP_PATH}/transactions`;
   try {
-    const q = query(collection(db, colPath), limit(150));
+    const q = query(collection(db, colPath), limit(1000));
     return onSnapshot(q, (snapshot) => {
       const list: Transaction[] = [];
       snapshot.forEach((docSnap) => {

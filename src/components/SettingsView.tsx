@@ -32,7 +32,9 @@ import {
   UploadCloud,
   Wifi,
   WifiOff,
-  Smartphone
+  Smartphone,
+  Server,
+  Database
 } from 'lucide-react';
 import { AppSettings, Transaction, AllowedAccount } from '../types';
 import { t, Language } from '../lib/i18n';
@@ -66,6 +68,7 @@ interface SettingsViewProps {
   onRestoreData: (transactions: Transaction[], settings: AppSettings) => void;
   onResetData: () => void;
   shopData?: CompleteShopBackup;
+  onOpenPhpModal?: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -75,6 +78,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onRestoreData,
   onResetData,
   shopData,
+  onOpenPhpModal,
 }) => {
   const [shopName, setShopName] = useState(settings.shopName);
   const [ownerName, setOwnerName] = useState(settings.ownerName);
@@ -296,6 +300,66 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <div className="px-3 py-1.5 rounded-xl bg-slate-950/40 border border-white/20 text-xs font-semibold text-emerald-100 sm:self-center">
           Security Lock Active
+        </div>
+      </div>
+
+      {/* PHP & MySQL Dedicated Server Card (InfinityFree / Hostinger) */}
+      <div className={`${isLight ? 'bg-white border-emerald-300' : 'bg-slate-900 border-emerald-500/40'} border-2 rounded-2xl p-4 sm:p-6 shadow-xl space-y-4 transition-colors duration-200`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 border-emerald-500/20 gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-emerald-600 text-white shrink-0 shadow-md">
+              <Server className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className={`font-extrabold text-sm sm:text-base flex items-center gap-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                <span>پی ایچ پی اور مائی ایس کیو ایل بیک اینڈ (PHP & MySQL Backend)</span>
+                <span className="text-[11px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  Zero Limits
+                </span>
+              </h3>
+              <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                InfinityFree (cPanel) یا Hostinger (hPanel) پر بغیر کسی فائر بیس لمٹ کے اپنا ڈیٹا اسٹور کریں
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold self-start sm:self-auto">
+            <Database className="w-4 h-4" />
+            <span>{settings.phpBackendUrl ? 'سرور منسلک ہے' : 'سیٹ اپ کی ضرورت'}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
+          <div className={`p-3.5 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800/60 border-slate-700'} space-y-1.5`}>
+            <p className="font-semibold text-slate-500 dark:text-slate-400">PHP API سرور لنک:</p>
+            <p className="font-mono font-bold text-slate-900 dark:text-slate-100 truncate">
+              {settings.phpBackendUrl || 'کوئی لنک سیٹ نہیں (Not Configured)'}
+            </p>
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+              سہولت: لامحدود بل، لامحدود پروڈکٹس، زیرو چارجز
+            </p>
+          </div>
+
+          <div className={`p-3.5 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800/60 border-slate-700'} flex flex-col justify-between space-y-2`}>
+            <div>
+              <p className="font-semibold text-slate-500 dark:text-slate-400">حالت و ہم آہنگی (Sync Status):</p>
+              <p className="font-medium text-slate-800 dark:text-slate-200 mt-0.5">
+                {settings.phpLastSyncedAt ? `آخری سنک: ${new Date(settings.phpLastSyncedAt).toLocaleTimeString()}` : 'ابھی تک مکمل سنک نہیں ہوا'}
+              </p>
+            </div>
+
+            <div className="pt-1">
+              {onOpenPhpModal && (
+                <button
+                  type="button"
+                  onClick={onOpenPhpModal}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+                >
+                  <Server className="w-3.5 h-3.5" />
+                  <span>پی ایچ پی سرور سیٹنگز اور سنک کریں</span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

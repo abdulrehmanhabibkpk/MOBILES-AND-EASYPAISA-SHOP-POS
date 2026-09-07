@@ -4,9 +4,9 @@ import {
   Package, Sparkles, X, Check, LayoutGrid, List, Camera,
   FileSpreadsheet, ArrowUpDown, Download, Upload, Smartphone,
   Zap, Headphones, Shield, ShieldCheck, Cable, Battery, Layers,
-  Hash, Copy, CheckCircle2, ChevronDown, ClipboardList
+  Hash, Copy, CheckCircle2, ChevronDown, ClipboardList, PackagePlus
 } from 'lucide-react';
-import { Product, ProductCategory, ProductUnitItem, AppSettings } from '../types';
+import { Product, ProductCategory, ProductUnitItem, AppSettings, Transaction } from '../types';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { StockExportImportModal } from './StockExportImportModal';
 import { UnitDetailsModal } from './UnitDetailsModal';
@@ -28,6 +28,8 @@ interface InventoryViewProps {
   onSaveProduct: (product: Omit<Product, 'id' | 'createdAt'>, id?: string) => void;
   onDeleteProduct: (id: string) => void;
   onImportProducts?: (importedItems: ParsedStockItem[], mode: 'merge' | 'replace') => void;
+  onSaveTransaction?: (trx: Omit<Transaction, 'id' | 'createdAt'>) => void;
+  onOpenBulkStockModal?: (product?: Product) => void;
   settings: AppSettings;
 }
 
@@ -78,6 +80,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   onSaveProduct,
   onDeleteProduct,
   onImportProducts,
+  onSaveTransaction,
+  onOpenBulkStockModal,
   settings,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -503,6 +507,38 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               <span>Export / Import</span>
             </button>
 
+            {/* Bulk Stock Entry / Multi-IMEI (10+ Phones) */}
+            <button
+              onClick={() => {
+                if (onOpenBulkStockModal) {
+                  onOpenBulkStockModal();
+                }
+              }}
+              className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-black shadow-md shadow-blue-600/20 flex items-center gap-2 transition-all cursor-pointer"
+              title="10 فونز یا بلک اسٹاک کی ایک ساتھ انٹری کریں (تمام معلومات سیم، ہر فون کا منفرد IMEI)"
+            >
+              <PackagePlus className="w-4 h-4" />
+              <span>بلک فون انٹری (Bulk IMEIs)</span>
+            </button>
+
+            {/* Stock Adjustment & Audit */}
+            <button
+              onClick={() => {
+                if (onOpenBulkStockModal) {
+                  onOpenBulkStockModal();
+                }
+              }}
+              className={`py-2.5 px-3.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700'
+                  : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'
+              }`}
+              title="اسٹاک میں کمی بیشی یا گنتی کے بعد درستگی کریں"
+            >
+              <Layers className="w-4 h-4 text-blue-600" />
+              <span>اسٹاک ایڈجسٹمنٹ (+/-)</span>
+            </button>
+
             <button
               onClick={() => handleOpenAddModal('MOBILES')}
               className="py-2.5 px-4 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold shadow-md shadow-blue-700/20 flex items-center gap-2 transition-all cursor-pointer"
@@ -679,13 +715,22 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
                       {/* Stock Level */}
                       <td className="py-3 px-4 text-center">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                          isLowStock
-                            ? 'bg-rose-100 text-rose-800 border border-rose-300 animate-pulse'
-                            : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        }`}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onOpenBulkStockModal) {
+                              onOpenBulkStockModal(prod);
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded-full text-xs font-bold transition-transform hover:scale-105 cursor-pointer ${
+                            isLowStock
+                              ? 'bg-rose-100 text-rose-800 border border-rose-300 animate-pulse'
+                              : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          }`}
+                          title="اسٹاک ایڈجسٹ یا مزید فونز شامل کرنے کیلئے کلک کریں"
+                        >
                           {prod.stock} Pcs
-                        </span>
+                        </button>
                       </td>
 
                       {/* Purchase Price */}
@@ -706,6 +751,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                       {/* Action */}
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
+                          {onOpenBulkStockModal && (
+                            <button
+                              onClick={() => onOpenBulkStockModal(prod)}
+                              className="p-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 border border-teal-200 transition-colors cursor-pointer"
+                              title="مزید فونز / بلک اسٹاک انٹری (10+ Units with IMEIs)"
+                            >
+                              <PackagePlus className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           {totalUnitsCount > 0 && (
                             <button
                               onClick={() => setSelectedProductForUnits(prod)}
@@ -826,6 +880,20 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                    {onOpenBulkStockModal && (
+                      <button
+                        onClick={() => onOpenBulkStockModal(prod)}
+                        className={`p-1.5 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1 transition-colors ${
+                          isLight
+                            ? 'border-teal-200 text-teal-700 bg-teal-50 hover:bg-teal-100'
+                            : 'border-teal-800 text-teal-300 bg-teal-950/30 hover:bg-teal-900/50'
+                        }`}
+                        title="بلک اسٹاک / نئے فونز شامل کریں (10+ Phones with IMEIs)"
+                      >
+                        <PackagePlus className="w-3.5 h-3.5" />
+                        <span>+Stock</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleOpenEditModal(prod)}
                       className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1 transition-colors ${

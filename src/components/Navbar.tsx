@@ -29,7 +29,9 @@ import {
   HardDrive,
   WifiOff,
   Wifi,
-  Download
+  Download,
+  PackagePlus,
+  Server
 } from 'lucide-react';
 import { AppSettings } from '../types';
 import { CashCalculatorModal } from './CashCalculatorModal';
@@ -52,6 +54,9 @@ interface NavbarProps {
   onOpenNewTransaction: () => void;
   onOpenOpeningBalance: () => void;
   onOpenAutoBackupModal?: () => void;
+  onOpenDataRecoveryModal?: () => void;
+  onOpenBulkStockModal?: () => void;
+  onOpenPhpModal?: () => void;
   onLogout?: () => void;
   loading?: boolean;
 }
@@ -67,6 +72,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNewTransaction,
   onOpenOpeningBalance,
   onOpenAutoBackupModal,
+  onOpenDataRecoveryModal,
+  onOpenBulkStockModal,
+  onOpenPhpModal,
   onLogout,
   loading = false,
 }) => {
@@ -196,6 +204,28 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="hidden lg:inline">{pwaState.isOnline ? 'Online' : 'Offline'}</span>
           </div>
 
+          {/* PHP MySQL Server Button */}
+          {onOpenPhpModal && (
+            <button
+              onClick={onOpenPhpModal}
+              className={`h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl border flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0 ${
+                settings.phpBackendUrl
+                  ? (isLight
+                      ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                      : 'bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-400 border-emerald-800/60')
+                  : (isLight
+                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                      : 'bg-neutral-800 hover:bg-neutral-700 text-slate-300 border-neutral-700')
+              }`}
+              title="پی ایچ پی اور مائی ایس کیو ایل سرور (InfinityFree / Hostinger)"
+            >
+              <Server className="w-4 h-4 text-emerald-500" />
+              <span className="hidden xl:inline text-[11px] font-bold">
+                {settings.phpBackendUrl ? 'PHP MySQL' : 'PHP سرور'}
+              </span>
+            </button>
+          )}
+
           {/* Storage & Auto-Backup Status Button */}
           <button
             onClick={onOpenAutoBackupModal}
@@ -224,6 +254,42 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             )}
           </button>
+
+          {/* Data Recovery Rescue Button */}
+          {onOpenDataRecoveryModal && (
+            <button
+              onClick={onOpenDataRecoveryModal}
+              className={`h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl border flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0 ${
+                isLight
+                  ? 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
+                  : 'bg-blue-950/40 hover:bg-blue-900/60 text-blue-400 border-blue-800/60'
+              }`}
+              title="ڈیٹا پروٹیکشن و گم شدہ سیلز ریکوری (Deep Data Recovery)"
+            >
+              <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="hidden xl:inline text-[11px] font-bold">
+                {isEn ? 'Recovery' : 'ڈیٹا ریکوری'}
+              </span>
+            </button>
+          )}
+
+          {/* Bulk Stock Multi-IMEI Entry */}
+          {onOpenBulkStockModal && (
+            <button
+              onClick={() => onOpenBulkStockModal()}
+              className={`h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl border flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0 ${
+                isLight
+                  ? 'bg-teal-50 hover:bg-teal-100 text-teal-700 border-teal-200'
+                  : 'bg-teal-950/40 hover:bg-teal-900/60 text-teal-300 border-teal-800/60'
+              }`}
+              title="10 فونز یا بلک اسٹاک اینٹری (Bulk 10+ Phones with IMEIs)"
+            >
+              <PackagePlus className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <span className="hidden xl:inline text-[11px] font-bold">
+                {isEn ? 'Bulk Stock' : 'بلک اسٹاک'}
+              </span>
+            </button>
+          )}
 
           {/* Daily Cash Notes Calculator Button */}
           <button
@@ -569,6 +635,45 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <Download className="w-4 h-4" />
                   <span>{isEn ? 'Install App (Offline Ready)' : 'ایپ انسٹال کریں (آف لائن استعمال)'}</span>
+                </button>
+              )}
+
+              {onOpenPhpModal && (
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    onOpenPhpModal();
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                >
+                  <Server className="w-4 h-4" />
+                  <span>{isEn ? 'PHP & MySQL Server' : 'پی ایچ پی و مائی ایس کیو ایل سرور'}</span>
+                </button>
+              )}
+
+              {onOpenBulkStockModal && (
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    onOpenBulkStockModal();
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                >
+                  <PackagePlus className="w-4 h-4" />
+                  <span>{isEn ? 'Bulk Stock / 10+ Phones Entry' : 'بلک اسٹاک / 10+ فون اینٹری'}</span>
+                </button>
+              )}
+
+              {onOpenDataRecoveryModal && (
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    onOpenDataRecoveryModal();
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>{isEn ? 'Data Loss Protection & Recovery' : 'گم شدہ سیلز ڈیٹا ریکور کریں'}</span>
                 </button>
               )}
 
